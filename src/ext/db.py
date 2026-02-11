@@ -35,7 +35,6 @@ def build_engine(
 
 _settings = get_settings()
 engine = build_engine()
-DATABASE_URL = _settings.database_url
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
@@ -44,19 +43,14 @@ async def get_session() -> AsyncGenerator[AsyncSession, None]:
         yield session
 
 
-# Alembic and app need metadata. Import all table models below so
-# metadata is populated and migrations see them.
-# from src.resources._base.models import *  # noqa: F401
-# from src.resources.debts.models import *  # noqa: F401
-# from src.resources.incomes.models import *  # noqa: F401
-
-# For now, metadata comes from SQLModel only (no tables yet).
-# When you add the first model, import it here.
+# Alembic and app need metadata. Import all *table* models (table=True) here.
+# _base.models.BaseTable is a mixin (no table); import concrete models from resources, e.g.:
+# from src.resources.debts.models import Debt  # noqa: F401
+# from src.resources.incomes.models import Income  # noqa: F401
 __all__ = [
     "build_engine",
     "engine",
     "get_session",
     "AsyncSession",
     "SQLModel",
-    "DATABASE_URL",
 ]
