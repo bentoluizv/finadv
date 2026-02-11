@@ -182,7 +182,7 @@ FastAPI can use orjson for response serialization (faster for large payloads). T
 ## Terminal & Tooling Protocol
 - **Installation:** `uv add <package>`
 - **Execution:** `uv run fastapi dev src/main.py`
-- **Quality Control:** `uv run ruff check src --fix`; `uv run ty`
+- **Quality Control:** `uv run task check` (runs ruff then ty). See **Ruff (lint and format)** for rule explanations and recommendations.
 - **Database Migrations:**
   1. Update `src/resources/<resource>/models.py` and import the new model in `alembic/env.py`.
   2. `uv run alembic revision --autogenerate -m "description"`
@@ -201,6 +201,31 @@ FastAPI can use orjson for response serialization (faster for large payloads). T
 ## Static Assets
 - **CSS:** Tailwind via **pytailwindcss** — run its watch/build as needed; keep built assets in a single known directory (e.g. `static/` under `src` or project root) and serve via FastAPI static mount. Use utility classes in templates/htmy components instead of custom CSS files where possible.
 - **JS:** Rely on **HTMX** attributes and FastHX/htmy components for interactivity. Do not introduce a SPA framework or custom front-end build unless explicitly requested.
+
+## Ruff (lint and format)
+
+Configuration is in `pyproject.toml` under `[tool.ruff]`, `[tool.ruff.lint]`, and `[tool.ruff.format]`. Run lint + format and type-check together with **`uv run task check`** (or `uv run task ruff` and `uv run task ty` separately).
+
+### Format rules
+- **Single quotes** for strings (`quote-style = "single"`). Use double quotes only when the string contains a single quote or for docstrings if you prefer.
+- **Indent width 2** spaces (`indent-width = 2`, `indent-style = "space"`). Keep blocks aligned with 2 spaces; do not use tabs.
+- **Line length 88** (Black-compatible). Break long lines; prefer one logical statement per line.
+- **Target Python 3.14** (`target-version = "py314"`). Use modern syntax and stdlib; no legacy compatibility hacks for older Python.
+
+### Lint rule sets (modern pythonic)
+- **E (pycodestyle):** Style and formatting (indentation, whitespace, line length). Keeps code consistent and readable.
+- **F (Pyflakes):** Unused imports, undefined names, dead code. Catches real bugs and clutter.
+- **I (isort):** Import order and grouping. Standard library first, then third-party, then local; alphabetical within groups. Run with `--fix` to auto-sort.
+- **UP (pyupgrade):** Modern Python syntax and stdlib (e.g. `list[...]` instead of `List` from typing, f-strings, `pathlib`). Aligns code with the target version.
+- **B (flake8-bugbear):** Common bugs and anti-patterns (e.g. mutable defaults, bare `except`, assert in production). Prefer fixing the cause over disabling.
+- **C4 (flake8-comprehensions):** Clearer list/dict/set comprehensions and avoid unnecessary `list()` around generators where a list comp is clearer.
+- **SIM (flake8-simplify):** Simpler equivalents (e.g. single `if` instead of redundant `if/else`, mergeable `with`). Reduces noise without changing behavior.
+
+### Recommendations
+- **Run `uv run task check`** after editing Python under `src`; fix any reported issues before considering the task done.
+- **Prefer fixing violations** (refactor or correct the code) over adding `# noqa` or ignoring rules. Use `# noqa` only when the rule is a false positive and a one-line comment explains why.
+- **Keep the rule set as-is** when adding features. If a rule conflicts with a deliberate pattern, document the exception in code and prefer a narrow per-file or per-line ignore over disabling the rule globally.
+- **Format before committing:** `uv run ruff format src` (or run the full check task) so diffs stay clean and consistent.
 
 ## Standard Patterns
 

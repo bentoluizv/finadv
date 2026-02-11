@@ -9,7 +9,7 @@ Act as a Lead Python Developer. Prioritize simplicity, type safety, and function
 - **Layers and order:** Implement or change in this order when adding features: models → repository (and factory) → logic → routes → templates → tests. Do not put DB or business logic in routes; do not put session usage outside repository.
 - **Reuse first:** For new resources, use the base model (id, timestamps), base repository helpers (generic CRUD), and base layout. Add partials or a resource factory only when a real use case exists.
 - **Small, focused edits:** Prefer a few clear edits per step. One logical change per commit when the user commits (see AGENT.md for commit rules).
-- **After editing code:** Run `uv run ruff check src --fix` and `uv run ty` when you change Python under `src`; fix any new issues before considering the task done.
+- **After editing code:** Run `uv run task check` (ruff + ty) when you change Python under `src`; fix any new issues before considering the task done.
 - **When debugging or refactoring:** Follow the flow route → logic → repository; change the layer that owns the responsibility (e.g. validation in route, rules in logic, persistence in repository).
 - **Tests:** Add or update tests in the resource’s `tests/` when adding or changing behavior; use shared fixtures from `ext` or root `conftest.py`. Add a resource factory only when tests need controlled ids or construction from dict.
 
@@ -37,6 +37,7 @@ Act as a Lead Python Developer. Prioritize simplicity, type safety, and function
 - **UX:** Clear labels, semantic HTML, and keyboard-friendly interactions. Prefer small, focused screens; avoid features or flows not in the MVP (see AGENT.md Product & UX). Avoid introducing a SPA framework or heavy custom JavaScript unless the user explicitly requests it.
 
 ## Style
+- **Ruff format and lint:** Use **single quotes** for strings, **2-space** indentation, **88**-character line length. Lint rule sets (in `pyproject.toml`): E (pycodestyle), F (Pyflakes), I (isort), UP (pyupgrade), B (bugbear), C4 (comprehensions), SIM (simplify). Fix violations rather than disabling rules; use `# noqa` only for genuine false positives with a brief comment. See AGENT.md **Ruff (lint and format)** for full explanations and recommendations.
 - **Variables over inline calls:** Prefer assigning the result of a function (or method) to a variable, then using or returning that variable, instead of returning or using the function call directly (e.g. `settings = get_settings(); url = settings.database_url` rather than `get_settings().database_url` inline). Improves readability and debugging.
 
 ## Avoid redundancy and unnecessary code
