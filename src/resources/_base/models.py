@@ -1,0 +1,33 @@
+"""
+Base table model: shared fields for all domain tables.
+
+Inherit from BaseTable (without table=True on the base) and set table=True
+on your resource model so it gets id, created_at, updated_at.
+"""
+
+from datetime import datetime, timezone
+
+from sqlmodel import Field, SQLModel
+
+from ulid import ULID
+
+
+def _ulid_default() -> str:
+    return str(ULID())
+
+
+def _utc_now() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+class BaseTable(SQLModel):
+    """Mixin for table models: id (ULID), created_at, updated_at. Abstract so no table is created for this class."""
+
+    __abstract__ = True
+
+    id: str = Field(primary_key=True, default_factory=_ulid_default)
+    created_at: datetime = Field(default_factory=_utc_now)
+    updated_at: datetime = Field(default_factory=_utc_now)
+
+
+__all__ = ["BaseTable"]
