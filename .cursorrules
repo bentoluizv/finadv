@@ -6,16 +6,16 @@ Act as a Lead Python Developer. Prioritize simplicity, type safety, and function
 ## How You Will Work
 - **Before larger changes:** Read `AGENT.md` for project layout, protocols, and workflows. Use the existing base resource (`_base/`) and patterns instead of inventing new ones.
 - **Layers and order:** Implement or change in this order when adding features: models → repository (and factory) → logic → routes → templates → tests. Do not put DB or business logic in routes; do not put session usage outside repository.
-- **Reuse first:** For new resources, use the base model (id, timestamps), base repository helpers (generic CRUD), and base templates (layout, partials). Add only what is specific to the domain.
+- **Reuse first:** For new resources, use the base model (id, timestamps), base repository helpers (generic CRUD), and base layout. Add partials or a resource factory only when a real use case exists.
 - **Small, focused edits:** Prefer a few clear edits per step. One logical change per commit when the user commits (see AGENT.md for commit rules).
 - **After editing code:** Run `uv run ruff check src --fix` and `uv run ty` when you change Python under `src`; fix any new issues before considering the task done.
 - **When debugging or refactoring:** Follow the flow route → logic → repository; change the layer that owns the responsibility (e.g. validation in route, rules in logic, persistence in repository).
-- **Tests:** Add or update tests in the resource’s `tests/` when adding or changing behavior; use the resource’s factory and shared fixtures from `ext` or root `conftest.py` where appropriate.
+- **Tests:** Add or update tests in the resource’s `tests/` when adding or changing behavior; use shared fixtures from `ext` or root `conftest.py`. Add a resource factory only when tests need controlled ids or construction from dict.
 
 ## Structural Constraints
 - **Location:** All code must live in `/src`.
-- **Base Resource:** `src/resources/_base/` holds reusable pieces for all resources: base models (e.g. id, created_at, updated_at), base repository helpers (generic CRUD), and base templates (layout, partials). Domain resources inherit or use these; do not mount routes for `_base`.
-- **Resource Pattern:** Group by domain. A new resource (e.g., `debts`) must contain `models.py`, `logic.py`, `repository.py`, `routes.py`, a `templates/` folder, and a `tests/` folder. Use base model, base repository, and base templates where applicable.
+- **Base Resource:** `src/resources/_base/` holds reusable pieces: base models (id, created_at, updated_at), base repository helpers (generic CRUD), and one layout template. Add partials only when a feature needs them. Do not mount routes for `_base`.
+- **Resource Pattern:** Group by domain. A new resource (e.g., `debts`) must contain `models.py`, `logic.py`, `repository.py`, `routes.py`, `templates/`, and `tests/`. Use base model and base repository; add a resource factory only when overrides or construction-from-dict are needed.
 - **External Pattern:** Infrastructure (DB, API clients) must live in `/src/ext`.
 
 ## Technical Requirements (Python 3.14)
@@ -24,7 +24,7 @@ Act as a Lead Python Developer. Prioritize simplicity, type safety, and function
 - **Typing:** Use `ty`. Every function must have complete type hints.
 - **Data Modeling:** Use `SQLModel`. Inherit from `SQLModel, table=True` only for DB entities.
 - **Repository:** All DB access (CRUD, queries) lives in `repository.py` per resource as **async** functions taking `AsyncSession`. Logic and routes call repository functions; they do not use the session directly.
-- **Factory:** Use a factory (e.g. `factory.py` or builder functions) per resource to create entities with defaults; use in routes and tests instead of ad-hoc construction.
+- **Factory:** Add a factory per resource only when needed (explicit id/timestamps in tests, building from dict, or repeated construction logic). If the model’s default_factory is enough, instantiate the model directly; do not add a factory “for consistency.”
 - **Functional Logic:** Business rules in `logic.py` are async when they call the repository or external APIs; routes `await` them. Routes only validate, await logic/repository, and return; no business or DB logic in routes.
 - **FastAPI:** Use `APIRouter(prefix=..., tags=...)`, `Depends()` for async session and deps, `response_model` and explicit status codes. Route handlers are `async def` and keep thin.
 
@@ -33,6 +33,13 @@ Act as a Lead Python Developer. Prioritize simplicity, type safety, and function
 
 ## Style
 - **Variables over inline calls:** Prefer assigning the result of a function (or method) to a variable, then using or returning that variable, instead of returning or using the function call directly (e.g. `settings = get_settings(); url = settings.database_url` rather than `get_settings().database_url` inline). Improves readability and debugging.
+
+## Avoid redundancy and unnecessary code
+- **Single source of truth:** Do not duplicate values (e.g. do not re-export settings as another name elsewhere).
+- **One entry point per concept:** Prefer one way to obtain something unless the framework requires another (e.g. Depends(get_settings)).
+- **YAGNI:** Do not add placeholder files, stub partials, or “for later” helpers. Add code when a feature needs it.
+- **Lean tests:** Test behavior; merge tests that assert the same concern; avoid testing the framework.
+- **Minimal exports:** Export only what other modules use.
 
 ## Code Smells to Avoid
 - **Deep Nesting:** If code is more than 3 levels deep, refactor.

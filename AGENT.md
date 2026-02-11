@@ -7,7 +7,7 @@ Building the MVP for tracking Incomes and Debts (Sporadic/Recurrent).
 
 ## Project Layout
 - **Entry point:** `src/main.py` (mounts routers, creates app).
-- **Base resource:** `src/resources/_base/` — reusable building blocks for all resources. Not a domain resource (no routes mounted). Contains shared models, repository helpers, and templates (see below).
+- **Base resource:** `src/resources/_base/` — reusable building blocks for all resources. Not a domain resource (no routes mounted). Contains shared models, repository helpers, and a single layout template (see below). Add partials or shared templates only when a real use case appears.
 - **Resources:** `src/resources/<name>/` — each has `models.py`, `logic.py`, `repository.py`, `routes.py`, `templates/`, and `tests/` (tests for that resource only). Domain resources inherit or use the base where appropriate.
 - **Infrastructure:** `src/ext/` — e.g. `db.py` (async engine, `get_session` yielding `AsyncSession`), future async API clients. All models used by Alembic must be imported there (or in a central metadata). Shared test fixtures (e.g. test client, async session) live in `src/ext/` or project-root `conftest.py`.
 
@@ -168,18 +168,24 @@ FastAPI can use orjson for response serialization (faster for large payloads). T
 - **Content:** **Async** functions that take `AsyncSession` and perform CRUD/queries (e.g. `async def get_by_id(session, id)`, `list_all(session)`, `add(session, entity)`, `delete(session, id)`). Use `await session.get`, `await session.exec(select(...))`, `await session.commit`, `await session.refresh`. Return domain models or None; raise or return Result-style for errors if you prefer.
 - **Usage:** Routes and logic `await` repository functions; they do not build raw SQL or use the session directly outside the repository.
 
-### Factory
-- **Purpose:** Centralize creation of domain entities with defaults (e.g. for new records or test data), so construction logic is not scattered.
-- **Location:** `src/resources/<name>/factory.py` or factory functions in `models.py` (e.g. `build_debt(...)`).
-- **Content:** Functions that return new model instances (e.g. with ULID, defaults, or required fields). Use for creating test fixtures and for building entities before passing to repository.
-- **Usage:** Tests and routes use the factory instead of manually instantiating with many kwargs.
+### Factory (per resource, only when needed)
+- **Purpose:** Centralize creation of domain entities when you need overrides (e.g. explicit id/timestamps in tests) or building from a dict. If the model’s `default_factory` is enough (e.g. BaseTable already sets id, created_at, updated_at), instantiate the model directly and skip a factory.
+- **Location:** `src/resources/<name>/factory.py` or builder functions in `models.py` (e.g. `build_debt(...)`).
+- **When to add:** Add a factory when you have repeated construction logic, test fixtures that need controlled ids/timestamps, or creation from external data. Do not add a factory “for consistency” if `Model(**kwargs)` is enough.
 
 ### Base resource (`src/resources/_base/`)
 Reusable logic and templates shared by all resources. Do not mount routes for `_base`; it is not a domain.
 
 - **Base models (`_base/models.py`):** Shared fields or a base table class that all domain models can inherit (e.g. `id: str` ULID, `created_at`, `updated_at`). Resource models inherit from this base so schema and migrations stay consistent.
 - **Base repository (`_base/repository.py`):** Generic, reusable **async** repository helpers (e.g. `async def get_by_id(session, Model, id)`, `list_all(session, Model)`, `add(session, entity)`, `delete_by_id(session, Model, id)`). Resource repositories `await` these where possible and add only resource-specific queries.
-- **Base templates (`_base/templates/`):** Shared layout and partials (e.g. `layout.html` with head/nav/footer, `form_errors.html`, `csrf.html`). Resource templates extend the base layout or include these partials so UI stays consistent and DRY.
+- **Base templates (`_base/templates/`):** One shared layout (e.g. `layout.html`). Add partials (form_errors, csrf, etc.) only when you have a concrete use case and real content; avoid placeholder files.
+
+## Avoiding redundancy and unnecessary code
+- **Single source of truth:** Do not duplicate values. E.g. get `database_url` from settings only; do not re-export it as `DATABASE_URL` elsewhere unless a tool (e.g. Alembic) strictly requires it.
+- **One entry point per concept:** Prefer one way to obtain something (e.g. `get_settings()` or `settings`, not both unless Depends needs the callable). Document the preferred one.
+- **YAGNI (You Aren’t Gonna Need It):** Do not add code “for later.” No placeholder partials, stub files, or “might be useful” helpers. Add form_errors, CSRF, or a base factory when a real feature needs them.
+- **Lean tests:** Test behavior, not framework. Prefer one or two focused tests per concern; merge tests that only assert the same thing in different ways. Avoid testing that a library does what it says (e.g. that a model has fields defined in code).
+- **Minimal exports:** Only export what other modules use. Drop `__all__` entries and module-level names that nothing imports.
 
 ## FastAPI Best Practices
 - **Routers:** Use `APIRouter(prefix="/<resource>", tags=["<Resource>"])` per resource; include in `app` in `src/main.py`. Route handlers are `async def`.
@@ -198,11 +204,11 @@ Reusable logic and templates shared by all resources. Do not mount routes for `_
 When asked to create a new feature:
 1. Identify if it's a new resource or an extension of an existing one.
 2. Ensure `models.py` in the resource folder is imported in the central `src/ext/db.py` or `metadata` for Alembic to see it.
-3. Check for code smells (Primitive Obsession, Long Methods) before finishing.
+3. Check for code smells (Primitive Obsession, Long Methods) and for redundancy (duplicate exports, placeholder files, unnecessary factories) before finishing.
 
 ### Adding a new resource
 1. Create `src/resources/<name>/` with `models.py`, `logic.py`, `repository.py`, `routes.py`, `templates/`, and `tests/`.
-2. Define DB models (SQLModel, `table=True`) inheriting from the base model in `_base/models.py` where appropriate; add request/response schemas in `models.py`. Put all DB access in `repository.py` (use base repository helpers from `_base/repository.py` for generic CRUD). Put pure business functions in `logic.py`; use a Factory for entity creation. Templates should extend or include base layout/partials from `_base/templates/`.
+2. Define DB models (SQLModel, `table=True`) inheriting from the base model in `_base/models.py` where appropriate; add request/response schemas in `models.py`. Put all DB access in `repository.py` (use base repository helpers from `_base/repository.py` for generic CRUD). Put pure business functions in `logic.py`. Add a factory only if the resource needs one (overrides, fixtures, or construction from dict). Templates extend the base layout from `_base/templates/`; add partials only when needed.
 3. Register the router in `src/main.py`; import the new models in `src/ext/db.py` (or metadata) so Alembic picks them up.
 4. Add migration: `uv run alembic revision --autogenerate -m "add <name>"` then `uv run alembic upgrade head`.
 
