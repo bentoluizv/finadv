@@ -120,7 +120,7 @@ async def list_debts(session: AsyncSession = Depends(get_session)) -> list[Debt]
 @htmy.page(IndexPageComponent)  # full page (e.g. layout + content)
 async def index() -> None: ...
 ```
-The decorator uses the route’s return value and request context; the component (htmy or Jinja) receives that data. Same route can serve both HTMX and non-HTMX by returning data and letting the decorator choose the view.
+The decorator uses the route’s return value and request context; the component (htmy or Jinja) receives that data. Same route can serve both HTMX and non-HTMX by returning data and letting the decorator choose the view. Prefer **small HTMX fragments** (for `hx-swap`) for list rows, tables, and form regions, and use full pages only for top-level shells (layout + initial content).
 
 ### htmy — components and rendering
 ```python
@@ -141,7 +141,10 @@ def debt_table(debts: list[Debt], context: Context) -> Component:
 # In a route (e.g. with fasthx): return data; fasthx passes it to the component.
 # Standalone render: result = await Renderer().render(debt_table(debts))
 ```
-Use `html.<tag>(*children, attr=value)` for elements; `@component` for function components. Attributes use snake_case and are converted to kebab-case (e.g. `data_theme` → `data-theme`).
+Use `html.<tag>(*children, attr=value)` for elements; `@component` (or `@component.context_only`) for **function components**; and optional class-based components with an `htmy(self, context)` method when you want to attach behavior to domain objects. Attributes use snake_case and are converted to kebab-case (e.g. `data_theme` → `data-theme`).
+
+- **Component factories vs components:** When you only need to build markup without context, use simple factories that return components (e.g. `def debt_row_factory(...) -> Component`). When you need access to request/route context or want reusable behavior, prefer **htmy components** (`@component` or classes with `htmy()`), as described in the htmy components and function components guides.
+- **Streaming (optional):** For very long lists or slow-per-item rendering, you may use `StreamingRenderer` from htmy together with FastHX (see the HTMY Streaming example). Only introduce streaming when you have a real performance need; otherwise keep rendering simple for the MVP.
 
 ### python-ulid — IDs for new entities
 ```python
@@ -196,7 +199,8 @@ FastAPI can use orjson for response serialization (faster for large payloads). T
 - **Fixtures:** Resource-specific fixtures in that resource’s `tests/conftest.py`; shared fixtures (DB session, test client) in `src/ext/conftest.py` or project-root `conftest.py`.
 
 ## Static Assets
-- **CSS:** Tailwind via **pytailwindcss** — run its watch/build as needed; keep built assets in a single known directory (e.g. `static/` under `src` or project root) and serve via FastAPI static mount.
+- **CSS:** Tailwind via **pytailwindcss** — run its watch/build as needed; keep built assets in a single known directory (e.g. `static/` under `src` or project root) and serve via FastAPI static mount. Use utility classes in templates/htmy components instead of custom CSS files where possible.
+- **JS:** Rely on **HTMX** attributes and FastHX/htmy components for interactivity. Do not introduce a SPA framework or custom front-end build unless explicitly requested.
 
 ## Standard Patterns
 

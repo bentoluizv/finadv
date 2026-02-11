@@ -29,9 +29,12 @@ Act as a Lead Python Developer. Prioritize simplicity, type safety, and function
 - **Functional Logic:** Business rules in `logic.py` are async when they call the repository or external APIs; routes `await` them. Routes only validate, await logic/repository, and return; no business or DB logic in routes.
 - **FastAPI:** Use `APIRouter(prefix=..., tags=...)`, `Depends()` for async session and deps, `response_model` and explicit status codes. Route handlers are `async def` and keep thin.
 
-## UI Pattern (HTMX)
-- **Fragments:** Prefer returning small HTML fragments for `hx-swap` over full pages.
-- **UX:** Clear labels, semantic HTML, and keyboard-friendly interactions. Prefer small, focused screens; avoid features or flows not in the MVP (see AGENT.md Product & UX).
+## UI Pattern (HTMX, FastHX, htmy)
+- **Fragments first:** Prefer returning small HTML fragments for `hx-swap` (rows, tables, form regions) over full pages. Use full pages only for top-level shells (layout + initial content).
+- **FastHX decorators:** Use a single `HTMY` instance from `fasthx.htmy.HTMY` and decorate routes with `@htmy.page(...)` for full pages and `@htmy.hx(...)` for HTMX endpoints. Routes return data; components (htmy/Jinja) render the HTML.
+- **htmy components:** Prefer htmy **function components** (`@component`, `@component.context_only`) and, when needed, class-based components with an `htmy(context)` method, following the htmy components/function-components guides. Use simple factories that return components when you do not need access to context.
+- **Styling:** Use Tailwind CSS via **pytailwindcss**; favor utility classes in templates and htmy components instead of large custom CSS files.
+- **UX:** Clear labels, semantic HTML, and keyboard-friendly interactions. Prefer small, focused screens; avoid features or flows not in the MVP (see AGENT.md Product & UX). Avoid introducing a SPA framework or heavy custom JavaScript unless the user explicitly requests it.
 
 ## Style
 - **Variables over inline calls:** Prefer assigning the result of a function (or method) to a variable, then using or returning that variable, instead of returning or using the function call directly (e.g. `settings = get_settings(); url = settings.database_url` rather than `get_settings().database_url` inline). Improves readability and debugging.
