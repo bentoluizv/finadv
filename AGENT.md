@@ -9,13 +9,135 @@ Building the MVP for tracking Incomes and Debts (Sporadic/Recurrent).
 - **Entry point:** `src/main.py` (mounts routers, creates app).
 - **Base resource:** `src/resources/_base/` — reusable building blocks for all resources. Not a domain resource (no routes mounted). Contains shared models, repository helpers, and templates (see below).
 - **Resources:** `src/resources/<name>/` — each has `models.py`, `logic.py`, `repository.py`, `routes.py`, `templates/`, and `tests/` (tests for that resource only). Domain resources inherit or use the base where appropriate.
-- **Infrastructure:** `src/ext/` — e.g. `db.py` (engine, session), future API clients. All models used by Alembic must be imported there (or in a central metadata). Shared test fixtures (e.g. test client, base DB fixture) live in `src/ext/` or project-root `conftest.py`.
+- **Infrastructure:** `src/ext/` — e.g. `db.py` (async engine, `get_session` yielding `AsyncSession`), future async API clients. All models used by Alembic must be imported there (or in a central metadata). Shared test fixtures (e.g. test client, async session) live in `src/ext/` or project-root `conftest.py`.
 
 ## Tools & Dependencies (pyproject.toml)
 - **Runtime:** Python ≥3.14; **uv** (package manager and runner).
 - **Web:** **FastAPI** (API + server; `[all]` includes Jinja2, static files, etc.); **fasthx** (HTMX integration for FastAPI); **htmy** (HTML templating).
 - **Data:** **SQLModel** (ORM + Pydantic models); **Alembic** (DB migrations); **pydantic** (validation/settings); **orjson** (fast JSON); **python-ulid** (ULID identifiers).
 - **Dev / quality:** **ruff** (lint + format); **ty** (static type checker); **pytest** (tests); **taskipy** (task runner from pyproject); **pytailwindcss** (Tailwind CSS build); **ignr** (CLI to fetch .gitignore templates from gitignore.io).
+
+## Async-first rule
+
+All request-handling and I/O must be **async**: use `async def` for routes, repository functions, and logic that performs DB or external API calls. Use **AsyncSession** (SQLModel) and async HTTP clients; do not use sync `Session` or blocking I/O in the request path. This keeps the event loop non-blocking and matches FastAPI/htmy async usage.
+
+## Dependency usage examples
+
+Use these patterns in code; adapt to your resource and base layer. All examples are async.
+
+### FastAPI — router, Depends, async response
+```python
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+router = APIRouter(prefix="/debts", tags=["Debts"])
+
+@router.get("/{id}", response_model=DebtRead)
+async def get_debt(id: str, session: AsyncSession = Depends(get_session)) -> Debt:
+    debt = await repository.get_by_id(session, id)
+    if debt is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND)
+    return debt
+
+@router.post("", response_model=DebtRead, status_code=status.HTTP_201_CREATED)
+async def create_debt(body: DebtCreate, session: AsyncSession = Depends(get_session)) -> Debt:
+    entity = factory.build_debt(**body.model_dump())
+    return await repository.add(session, entity)
+```
+Define `get_session` in `src/ext/db.py` as an **async** dependency that yields an `AsyncSession` (e.g. `async with AsyncSession(engine) as session: yield session`).
+
+### SQLModel — AsyncSession, select, add, commit
+```python
+from sqlmodel import select
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+async def get_by_id(session: AsyncSession, model: type[Debt], id: str) -> Debt | None:
+    return await session.get(model, id)
+
+async def list_all(session: AsyncSession, model: type[Debt]) -> list[Debt]:
+    statement = select(model)
+    result = await session.exec(statement)
+    return list(result.all())
+
+async def add(session: AsyncSession, entity: Debt) -> Debt:
+    session.add(entity)
+    await session.commit()
+    await session.refresh(entity)
+    return entity
+```
+Use `await session.exec(select(Model).where(...))` for filtered queries; keep all such code inside `repository.py`. Engine must be created with `create_async_engine` for async.
+
+### fasthx — HTMX vs full page (async routes)
+```python
+from fasthx.htmy import HTMY
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+htmy = HTMY()  # or pass template dir / renderer config
+
+@router.get("/debts")
+@htmy.hx(DebtListComponent)   # HTMX request → render fragment
+async def list_debts(session: AsyncSession = Depends(get_session)) -> list[Debt]:
+    return await repository.list_all(session, Debt)
+
+@router.get("/")
+@htmy.page(IndexPageComponent)  # full page (e.g. layout + content)
+async def index() -> None: ...
+```
+The decorator uses the route’s return value and request context; the component (htmy or Jinja) receives that data. Same route can serve both HTMX and non-HTMX by returning data and letting the decorator choose the view.
+
+### htmy — components and rendering
+```python
+from htmy import Renderer, component, html, Context, Component
+
+@component
+def debt_row(debt: Debt, context: Context) -> Component:
+    return html.tr(
+        html.td(debt.id),
+        html.td(debt.category),
+        html.td(str(debt.amount)),
+    )
+
+@component
+def debt_table(debts: list[Debt], context: Context) -> Component:
+    return html.table([debt_row(d) for d in debts])
+
+# In a route (e.g. with fasthx): return data; fasthx passes it to the component.
+# Standalone render: result = await Renderer().render(debt_table(debts))
+```
+Use `html.<tag>(*children, attr=value)` for elements; `@component` for function components. Attributes use snake_case and are converted to kebab-case (e.g. `data_theme` → `data-theme`).
+
+### python-ulid — IDs for new entities
+```python
+from ulid import ULID
+
+def build_debt(..., id: str | None = None) -> Debt:
+    return Debt(id=str(ULID()) if id is None else id, ...)
+```
+Use `str(ULID())` when creating new records so every entity has a unique, sortable id.
+
+### Pytest — client and async session fixtures
+```python
+# conftest.py (e.g. in src/ext/ or resource tests/)
+import pytest
+from fastapi.testclient import TestClient
+from sqlmodel.ext.asyncio.session import AsyncSession
+
+from src.main import app
+
+@pytest.fixture
+def client() -> TestClient:
+    return TestClient(app)
+
+@pytest.fixture
+async def session():
+    async with AsyncSession(engine) as s:
+        yield s
+        await s.rollback()
+```
+In resource tests: use `client.get("/debts")`, `client.post("/debts", json={...})` for route tests. For repository or logic tests that need a DB, use the async `session` fixture and `await` repository calls. Use `pytest-asyncio` and mark async tests with `@pytest.mark.asyncio` (or configure asyncio mode in `pytest.ini`/`pyproject.toml`).
+
+### orjson — optional fast JSON
+FastAPI can use orjson for response serialization (faster for large payloads). To enable: set a custom `JSONResponse` that uses `orjson.dumps`, or use FastAPI’s built-in orjson support if available for your version. Request bodies are still parsed by FastAPI; use orjson mainly for responses when needed.
 
 ## Terminal & Tooling Protocol
 - **Installation:** `uv add <package>`
@@ -28,7 +150,7 @@ Building the MVP for tracking Incomes and Debts (Sporadic/Recurrent).
 
 ## Environment & Config
 - Prefer env vars and **pydantic-settings** (or a single settings module in `src/ext/`). Do not hardcode secrets or DB URLs.
-- Use a conventional name for the DB: e.g. `DATABASE_URL` or `SQLITE_PATH`. Document in README or here if you introduce one.
+- Use a conventional name for the DB: e.g. `DATABASE_URL` or `SQLITE_PATH`. For async SQLModel use `create_async_engine` (e.g. `sqlite+aiosqlite:///...` for SQLite). Document in README or here if you introduce one.
 
 ## Testing
 - **Run:** `uv run pytest`
@@ -43,8 +165,8 @@ Building the MVP for tracking Incomes and Debts (Sporadic/Recurrent).
 ### Repository
 - **Purpose:** Abstract all database access for a resource in one place so logic and routes stay free of session/query details.
 - **Location:** `src/resources/<name>/repository.py`.
-- **Content:** Functions that take a session (or dependency) and perform CRUD/queries (e.g. `get_by_id(session, id)`, `list_all(session)`, `add(session, entity)`, `delete(session, id)`). Return domain models or None; raise or return Result-style for errors if you prefer.
-- **Usage:** Routes and logic call repository functions; they do not build raw SQL or use `session.query` directly outside the repository.
+- **Content:** **Async** functions that take `AsyncSession` and perform CRUD/queries (e.g. `async def get_by_id(session, id)`, `list_all(session)`, `add(session, entity)`, `delete(session, id)`). Use `await session.get`, `await session.exec(select(...))`, `await session.commit`, `await session.refresh`. Return domain models or None; raise or return Result-style for errors if you prefer.
+- **Usage:** Routes and logic `await` repository functions; they do not build raw SQL or use the session directly outside the repository.
 
 ### Factory
 - **Purpose:** Centralize creation of domain entities with defaults (e.g. for new records or test data), so construction logic is not scattered.
@@ -56,15 +178,15 @@ Building the MVP for tracking Incomes and Debts (Sporadic/Recurrent).
 Reusable logic and templates shared by all resources. Do not mount routes for `_base`; it is not a domain.
 
 - **Base models (`_base/models.py`):** Shared fields or a base table class that all domain models can inherit (e.g. `id: str` ULID, `created_at`, `updated_at`). Resource models inherit from this base so schema and migrations stay consistent.
-- **Base repository (`_base/repository.py`):** Generic, reusable repository helpers (e.g. `get_by_id(session, Model, id)`, `list_all(session, Model)`, `add(session, entity)`, `delete_by_id(session, Model, id)`). Resource repositories call these where possible and add only resource-specific queries.
+- **Base repository (`_base/repository.py`):** Generic, reusable **async** repository helpers (e.g. `async def get_by_id(session, Model, id)`, `list_all(session, Model)`, `add(session, entity)`, `delete_by_id(session, Model, id)`). Resource repositories `await` these where possible and add only resource-specific queries.
 - **Base templates (`_base/templates/`):** Shared layout and partials (e.g. `layout.html` with head/nav/footer, `form_errors.html`, `csrf.html`). Resource templates extend the base layout or include these partials so UI stays consistent and DRY.
 
 ## FastAPI Best Practices
-- **Routers:** Use `APIRouter(prefix="/<resource>", tags=["<Resource>"])` per resource; include in `app` in `src/main.py`.
-- **Dependency injection:** Use `Depends()` for DB session (e.g. `get_session`), config, and reusable logic. Define a single session dependency in `src/ext/db.py` and inject it into routes that need it.
+- **Routers:** Use `APIRouter(prefix="/<resource>", tags=["<Resource>"])` per resource; include in `app` in `src/main.py`. Route handlers are `async def`.
+- **Dependency injection:** Use `Depends()` for async DB session (e.g. `get_session` yielding `AsyncSession`), config, and reusable logic. Define a single async session dependency in `src/ext/db.py` and inject it into routes that need it.
 - **Request/response:** Use Pydantic models (or SQLModel) for request body and `response_model=` on routes. Prefer explicit schemas in `models.py` over returning raw ORM objects when the shape differs from the DB.
 - **Status codes:** Set explicit `status_code` where it matters (e.g. `201` on create, `404` when not found, `204` on delete).
-- **Thin routes:** Route handlers should: validate input (via Pydantic), call logic/repository, return response. No business or DB logic in the route body.
+- **Thin routes:** Route handlers should: validate input (via Pydantic), `await` logic/repository, return response. No business or DB logic in the route body.
 - **Exceptions:** Use HTTPException for API errors; optionally a single exception handler for domain errors (e.g. “not found”) that maps to 404/400.
 
 ## Domain Logic Rules
@@ -85,7 +207,7 @@ When asked to create a new feature:
 4. Add migration: `uv run alembic revision --autogenerate -m "add <name>"` then `uv run alembic upgrade head`.
 
 ### Adding an HTMX endpoint
-1. Add the route in the resource’s `routes.py`; call a pure function from `logic.py` (no business logic in the route).
+1. Add an `async def` route in the resource’s `routes.py`; `await` a function from `logic.py` (no business logic in the route).
 2. Return a small HTML fragment (e.g. from `templates/`) for `hx-swap`; prefer fragments over full-page responses.
 
 ## Out of Scope (MVP)

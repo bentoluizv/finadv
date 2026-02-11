@@ -19,13 +19,14 @@ Act as a Lead Python Developer. Prioritize simplicity, type safety, and function
 - **External Pattern:** Infrastructure (DB, API clients) must live in `/src/ext`.
 
 ## Technical Requirements (Python 3.14)
+- **Async-first:** All I/O must be async: use `async def` for routes, repository functions, logic that calls the repository or external APIs, and any other I/O. Use `AsyncSession` (SQLModel) for DB; use async HTTP clients for API calls. Do not use sync `Session` or blocking calls in request-handling paths.
 - **Dependency Management:** Always use `uv`.
 - **Typing:** Use `ty`. Every function must have complete type hints.
 - **Data Modeling:** Use `SQLModel`. Inherit from `SQLModel, table=True` only for DB entities.
-- **Repository:** All DB access (CRUD, queries) lives in `repository.py` per resource. Logic and routes call repository functions; they do not use the session directly.
+- **Repository:** All DB access (CRUD, queries) lives in `repository.py` per resource as **async** functions taking `AsyncSession`. Logic and routes call repository functions; they do not use the session directly.
 - **Factory:** Use a factory (e.g. `factory.py` or builder functions) per resource to create entities with defaults; use in routes and tests instead of ad-hoc construction.
-- **Functional Logic:** Business rules are pure functions in `logic.py`; they may call the resource's repository. Routes only validate, call logic/repository, and return; no business or DB logic in routes.
-- **FastAPI:** Use `APIRouter(prefix=..., tags=...)`, `Depends()` for session and deps, `response_model` and explicit status codes. Keep route handlers thin.
+- **Functional Logic:** Business rules in `logic.py` are async when they call the repository or external APIs; routes `await` them. Routes only validate, await logic/repository, and return; no business or DB logic in routes.
+- **FastAPI:** Use `APIRouter(prefix=..., tags=...)`, `Depends()` for async session and deps, `response_model` and explicit status codes. Route handlers are `async def` and keep thin.
 
 ## UI Pattern (HTMX)
 - **Fragments:** Prefer returning small HTML fragments for `hx-swap` over full pages.
