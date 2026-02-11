@@ -1,21 +1,59 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>FinAdv</title>
-</head>
-<body>
-  <header>
-    <nav aria-label="Main">
-      <a href="/">FinAdv</a>
-    </nav>
-  </header>
-  <main>
-    <!-- main content: extend or include; replace this block when using a templating engine -->
-  </main>
-  <footer>
-    <p>FinAdv — Income &amp; Debt tracking</p>
-  </footer>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FinAdv</title>
+
+    <!-- Tailwind CSS – built via pytailwindcss into /static/app.css -->
+    <link rel="stylesheet" href="/static/app.css" />
+
+    <!-- HTMX for partial updates and hx-* attributes -->
+    <script src="https://unpkg.com/htmx.org@2.0.2" defer></script>
+  </head>
+  <body
+    class="min-h-screen bg-slate-950 text-slate-100 flex flex-col"
+    hx-boost="true"
+    hx-target="#content"
+    hx-swap="innerHTML"
+  >
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur">
+      <nav
+        class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3"
+        aria-label="Main navigation"
+      >
+        <a href="/" class="flex items-center gap-2 text-sm font-semibold tracking-tight">
+          <span
+            class="inline-flex h-7 w-7 items-center justify-center rounded bg-emerald-500/10 text-emerald-400 text-xs font-bold"
+          >
+            FA
+          </span>
+          <span class="text-slate-50">FinAdv</span>
+        </a>
+        <div class="flex items-center gap-4 text-xs font-medium text-slate-300">
+          <a href="/" class="hover:text-emerald-400">Overview</a>
+          <a href="/incomes/" class="hover:text-emerald-400">Incomes</a>
+          <a href="/debts/" class="hover:text-emerald-400">Debts</a>
+        </div>
+      </nav>
+    </header>
+
+    <main
+      id="content"
+      role="main"
+      class="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-6"
+    >
+      <!--
+        Main content.
+
+        - Full-page responses: render the initial layout and page content here.
+        - HTMX endpoints: return small fragments (tables, rows, form regions) that
+          target this <main> via hx-target="#content" or more specific containers.
+      -->
+    </main>
+
+    <footer class="border-t border-slate-800 py-4 text-center text-[11px] text-slate-500">
+      <p>FinAdv — Income &amp; Debt tracking</p>
+    </footer>
+  </body>
 </html>
