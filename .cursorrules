@@ -31,6 +31,9 @@ Act as a Lead Python Developer. Prioritize simplicity, type safety, and function
 ## UI Pattern (HTMX)
 - **Fragments:** Prefer returning small HTML fragments for `hx-swap` over full pages.
 
+## Style
+- **Variables over inline calls:** Prefer assigning the result of a function (or method) to a variable, then using or returning that variable, instead of returning or using the function call directly (e.g. `settings = get_settings(); url = settings.database_url` rather than `get_settings().database_url` inline). Improves readability and debugging.
+
 ## Code Smells to Avoid
 - **Deep Nesting:** If code is more than 3 levels deep, refactor.
 - **Class Overuse:** Avoid classes unless required by SQLModel/Pydantic (Repository and Factory are modules/functions, not fat service classes).
