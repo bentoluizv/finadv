@@ -5,19 +5,27 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.14"
 dependencies = [
+    "aiosqlite>=0.22.1",
     "alembic>=1.18.4",
     "fastapi[all]>=0.128.7",
     "fasthx>=3.1.0",
     "htmy>=0.10.2",
     "orjson>=3.11.7",
     "pydantic>=2.12.5",
+    "pydantic-settings>=2.12.0",
     "python-ulid>=3.1.0",
     "sqlmodel>=0.0.32",
 ]
 
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+pythonpath = ["."]
+
 [dependency-groups]
 dev = [
     "ignr>=2.2",
+    "pytest-asyncio>=0.25.0",
     "pytailwindcss>=0.3.0",
     "pytest>=9.0.2",
     "ruff>=0.15.0",
