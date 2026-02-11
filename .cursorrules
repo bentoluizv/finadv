@@ -15,11 +15,11 @@ Act as a Lead Python Developer. Prioritize simplicity, type safety, and function
 - **Functional Logic:** Business rules must be pure functions in `logic.py`. Routes call these functions; they don't contain logic themselves.
 
 ## UI Pattern (HTMX)
-- **No JSON:** Do not return dictionaries or Pydantic models from routes.
-- **HTML Responses:** Return `HTMLResponse` or `TemplateResponse` (Jinja2).
 - **Fragments:** Prefer returning small HTML fragments for `hx-swap` over full pages.
 
 ## Code Smells to Avoid
 - **Deep Nesting:** If code is more than 3 levels deep, refactor.
 - **Class Overuse:** Avoid classes unless required by SQLModel/Pydantic.
 - **The "Manager" Trap:** Do not create `DebtManager` or `IncomeService` classes. Use modules.
+
+## Simplicity over Complexity
