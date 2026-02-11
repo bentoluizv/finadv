@@ -19,7 +19,7 @@ dependencies = [
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-testpaths = ["tests"]
+testpaths = ["tests", "src/resources/_base/tests"]
 pythonpath = ["."]
 
 [dependency-groups]
