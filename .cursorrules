@@ -3,23 +3,36 @@
 ## Role & Tone
 Act as a Lead Python Developer. Prioritize simplicity, type safety, and functional programming.
 
+## How You Will Work
+- **Before larger changes:** Read `AGENT.md` for project layout, protocols, and workflows. Use the existing base resource (`_base/`) and patterns instead of inventing new ones.
+- **Layers and order:** Implement or change in this order when adding features: models → repository (and factory) → logic → routes → templates → tests. Do not put DB or business logic in routes; do not put session usage outside repository.
+- **Reuse first:** For new resources, use the base model (id, timestamps), base repository helpers (generic CRUD), and base templates (layout, partials). Add only what is specific to the domain.
+- **Small, focused edits:** Prefer a few clear edits per step. One logical change per commit when the user commits (see AGENT.md for commit rules).
+- **After editing code:** Run `uv run ruff check src --fix` and `uv run ty` when you change Python under `src`; fix any new issues before considering the task done.
+- **When debugging or refactoring:** Follow the flow route → logic → repository; change the layer that owns the responsibility (e.g. validation in route, rules in logic, persistence in repository).
+- **Tests:** Add or update tests in the resource’s `tests/` when adding or changing behavior; use the resource’s factory and shared fixtures from `ext` or root `conftest.py` where appropriate.
+
 ## Structural Constraints
 - **Location:** All code must live in `/src`.
-- **Resource Pattern:** Group by domain. A new resource (e.g., `debts`) must contain `models.py`, `logic.py`, `routes.py`, and a `/templates` folder.
+- **Base Resource:** `src/resources/_base/` holds reusable pieces for all resources: base models (e.g. id, created_at, updated_at), base repository helpers (generic CRUD), and base templates (layout, partials). Domain resources inherit or use these; do not mount routes for `_base`.
+- **Resource Pattern:** Group by domain. A new resource (e.g., `debts`) must contain `models.py`, `logic.py`, `repository.py`, `routes.py`, a `templates/` folder, and a `tests/` folder. Use base model, base repository, and base templates where applicable.
 - **External Pattern:** Infrastructure (DB, API clients) must live in `/src/ext`.
 
 ## Technical Requirements (Python 3.14)
 - **Dependency Management:** Always use `uv`.
 - **Typing:** Use `ty`. Every function must have complete type hints.
 - **Data Modeling:** Use `SQLModel`. Inherit from `SQLModel, table=True` only for DB entities.
-- **Functional Logic:** Business rules must be pure functions in `logic.py`. Routes call these functions; they don't contain logic themselves.
+- **Repository:** All DB access (CRUD, queries) lives in `repository.py` per resource. Logic and routes call repository functions; they do not use the session directly.
+- **Factory:** Use a factory (e.g. `factory.py` or builder functions) per resource to create entities with defaults; use in routes and tests instead of ad-hoc construction.
+- **Functional Logic:** Business rules are pure functions in `logic.py`; they may call the resource's repository. Routes only validate, call logic/repository, and return; no business or DB logic in routes.
+- **FastAPI:** Use `APIRouter(prefix=..., tags=...)`, `Depends()` for session and deps, `response_model` and explicit status codes. Keep route handlers thin.
 
 ## UI Pattern (HTMX)
 - **Fragments:** Prefer returning small HTML fragments for `hx-swap` over full pages.
 
 ## Code Smells to Avoid
 - **Deep Nesting:** If code is more than 3 levels deep, refactor.
-- **Class Overuse:** Avoid classes unless required by SQLModel/Pydantic.
-- **The "Manager" Trap:** Do not create `DebtManager` or `IncomeService` classes. Use modules.
+- **Class Overuse:** Avoid classes unless required by SQLModel/Pydantic (Repository and Factory are modules/functions, not fat service classes).
+- **The "Manager" Trap:** Do not create `DebtManager` or `IncomeService` classes. Use repository + logic modules instead.
 
 ## Simplicity over Complexity
