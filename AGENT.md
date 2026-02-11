@@ -5,6 +5,43 @@ Coding standards and structure: see **`.cursorrules`**.
 ## Current Project State
 Building the MVP for tracking Incomes and Debts (Sporadic/Recurrent).
 
+## Product & UX: How the app works
+
+**Purpose:** FinAdv helps a single user act as their own financial adviser by tracking **incomes** and **debts** in one place, with clear categories and payment methods, so they can see where money comes from and where it goes (including recurrent obligations).
+
+**User:** One person managing their personal finances. No multi-user or roles in the MVP.
+
+**How the user interacts:** Web app in the browser. Server-rendered pages with HTMX for partial updates (no SPA). Actions are: navigate (links), submit forms (add/edit income or debt), filter or list, delete. Prefer small, focused screens and inline feedback (e.g. swap a row or a list fragment after create/delete) instead of full-page reloads where it makes sense.
+
+**What the app does (MVP):**
+- **Incomes:** Register incoming money (fixed or variable); list and manage entries.
+- **Debts:** Register expenses/obligations with category (Food, Rent, etc.) and payment method (Pix, Credit, Debit, Cash); mark as one-off or recurrent; list and manage entries.
+- **Overview:** At least a clear list (or simple dashboard) of recent or all incomes and debts so the user can review the situation.
+
+**Functional requirements (MVP):**
+- CRUD for **incomes**: create, list, view, edit, delete.
+- CRUD for **debts**: create, list, view, edit, delete.
+- **Debt** has: category (e.g. Food, Rent), payment method (Pix, Credit, Debit, Cash), amount, optional description, and **is_recurrent** (boolean).
+- **Income** has: amount, optional description, and fixed vs variable (or equivalent).
+- Navigation between main areas (e.g. home, incomes, debts) from the layout.
+- Validation and clear error messages on forms (e.g. required fields, invalid amounts).
+
+**Non-functional requirements:**
+- **Simplicity:** Few screens and concepts; no unnecessary features.
+- **Clarity:** Labels and copy should be understandable at a glance (e.g. “Recurrent” vs “One-off”).
+- **Responsive:** Usable on small screens (mobile-friendly layout).
+- **Accessibility:** Semantic HTML, labels, and keyboard navigation; avoid interaction that relies only on hover or tiny targets.
+- **Performance:** Fast response for list and form actions; HTMX used to update only the changed parts where appropriate.
+
+**User stories (MVP):**
+- As a user, I want to **add an income** (amount, optional note) so that I can track what I earn.
+- As a user, I want to **add a debt** (amount, category, payment method, optional note, and whether it’s recurrent) so that I can track what I owe or spend.
+- As a user, I want to **see a list of my incomes and debts** so that I can review my financial situation.
+- As a user, I want to **edit or delete** an income or a debt so that I can correct or remove entries.
+- As a user, I want to **navigate** between “Incomes”, “Debts”, and home/overview so that I can focus on one area at a time.
+
+When implementing a feature, align with these stories and requirements; do not add flows or screens that are out of scope for the MVP (see Out of Scope).
+
 ## Project Layout
 - **Entry point:** `src/main.py` (mounts routers, creates app).
 - **Base resource:** `src/resources/_base/` — reusable building blocks for all resources. Not a domain resource (no routes mounted). Contains shared models, repository helpers, and a single layout template (see below). Add partials or shared templates only when a real use case appears.
@@ -202,9 +239,10 @@ Reusable logic and templates shared by all resources. Do not mount routes for `_
 
 ## Working with Resources
 When asked to create a new feature:
-1. Identify if it's a new resource or an extension of an existing one.
-2. Ensure `models.py` in the resource folder is imported in the central `src/ext/db.py` or `metadata` for Alembic to see it.
-3. Check for code smells (Primitive Obsession, Long Methods) and for redundancy (duplicate exports, placeholder files, unnecessary factories) before finishing.
+1. Align with **Product & UX** (AGENT.md): which user story or requirement it satisfies; keep flows and screens within the described MVP.
+2. Identify if it's a new resource or an extension of an existing one.
+3. Ensure `models.py` in the resource folder is imported in the central `src/ext/db.py` or `metadata` for Alembic to see it.
+4. Check for code smells (Primitive Obsession, Long Methods) and for redundancy (duplicate exports, placeholder files, unnecessary factories) before finishing.
 
 ### Adding a new resource
 1. Create `src/resources/<name>/` with `models.py`, `logic.py`, `repository.py`, `routes.py`, `templates/`, and `tests/`.

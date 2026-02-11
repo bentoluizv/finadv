@@ -5,6 +5,7 @@ Act as a Lead Python Developer. Prioritize simplicity, type safety, and function
 
 ## How You Will Work
 - **Before larger changes:** Read `AGENT.md` for project layout, protocols, and workflows. Use the existing base resource (`_base/`) and patterns instead of inventing new ones.
+- **Product & UX:** When adding screens, forms, or flows, follow the “Product & UX: How the app works” section in AGENT.md (user stories, functional and non-functional requirements). Implement only what supports those; do not add features outside the described MVP.
 - **Layers and order:** Implement or change in this order when adding features: models → repository (and factory) → logic → routes → templates → tests. Do not put DB or business logic in routes; do not put session usage outside repository.
 - **Reuse first:** For new resources, use the base model (id, timestamps), base repository helpers (generic CRUD), and base layout. Add partials or a resource factory only when a real use case exists.
 - **Small, focused edits:** Prefer a few clear edits per step. One logical change per commit when the user commits (see AGENT.md for commit rules).
@@ -30,6 +31,7 @@ Act as a Lead Python Developer. Prioritize simplicity, type safety, and function
 
 ## UI Pattern (HTMX)
 - **Fragments:** Prefer returning small HTML fragments for `hx-swap` over full pages.
+- **UX:** Clear labels, semantic HTML, and keyboard-friendly interactions. Prefer small, focused screens; avoid features or flows not in the MVP (see AGENT.md Product & UX).
 
 ## Style
 - **Variables over inline calls:** Prefer assigning the result of a function (or method) to a variable, then using or returning that variable, instead of returning or using the function call directly (e.g. `settings = get_settings(); url = settings.database_url` rather than `get_settings().database_url` inline). Improves readability and debugging.
