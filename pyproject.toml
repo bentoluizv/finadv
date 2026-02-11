@@ -22,6 +22,10 @@ asyncio_mode = "auto"
 testpaths = ["tests", "src/resources/_base/tests"]
 pythonpath = ["."]
 
+[tool.taskipy.tasks]
+tailwind = "uv run tailwindcss -i ./src/static/main.css -o ./src/static/output.css"
+tailwind_watch = "uv run tailwindcss -i ./src/static/main.css -o ./src/static/output.css --watch"
+
 [dependency-groups]
 dev = [
     "ignr>=2.2",
