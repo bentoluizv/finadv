@@ -1,56 +1,37 @@
 """
-Async database adapter: SQLite via aiosqlite.
+Async database adapter: engine and session factory from settings.
 
-Engine and session are created from settings (see settings.py; loads .env).
-Use build_engine() to create an engine for a given URL (e.g. tests with :memory:).
-Use get_session in routes; import all SQLModel table models here so Alembic can discover them.
+Uses get_settings().database_url by default; build_engine(url) for tests (e.g. in-memory).
 """
 
 from collections.abc import AsyncGenerator
-from typing import Any
-
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlmodel import SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.ext.settings import get_settings
 
 
-def build_engine(
-    database_url: str | None = None,
-    *,
-    echo: bool | None = None,
-    **kwargs: Any,
-) -> AsyncEngine:
-    """Factory: build an async engine. No args → use settings; pass url (and optional echo) for tests or custom DB."""
-    s = get_settings()
-    url = database_url if database_url is not None else s.database_url
-    echo_val = echo if echo is not None else s.sql_echo
-    connect_args: dict[str, Any] = (
-        {"check_same_thread": False} if "sqlite" in url else {}
+def build_engine(database_url: str | None = None) -> AsyncEngine:
+    """Build an async engine. If database_url is None, use get_settings().database_url."""
+    url = database_url
+    if url is None:
+        _s = get_settings()
+        url = _s.database_url
+    return create_async_engine(
+        url,
+        echo=get_settings().sql_echo,
+        future=True,
     )
-    async_engine = create_async_engine(url, echo=echo_val, connect_args=connect_args, **kwargs)
-    return async_engine
 
 
-_settings = get_settings()
+# Default engine from settings. Used by get_session and by Alembic (env.py uses sync URL separately).
 engine = build_engine()
 
 
 async def get_session() -> AsyncGenerator[AsyncSession, None]:
-    """FastAPI dependency: yields an async session per request. Repositories are responsible for commit/rollback."""
+    """Async generator yielding an AsyncSession. Caller must use within async context."""
     async with AsyncSession(engine, expire_on_commit=False) as session:
         yield session
 
 
-# Alembic and app need metadata. Import all *table* models (table=True) here.
-# _base.models.BaseTable is a mixin (no table); import concrete models from resources, e.g.:
-# from src.resources.debts.models import Debt  # noqa: F401
-# from src.resources.incomes.models import Income  # noqa: F401
-__all__ = [
-    "build_engine",
-    "engine",
-    "get_session",
-    "AsyncSession",
-    "SQLModel",
-]
+__all__ = ["build_engine", "engine", "get_session"]
