@@ -25,11 +25,11 @@ class Settings(BaseSettings):
 
 
 def get_settings() -> Settings:
-    """Factory: returns the application settings. Use in Depends(get_settings) or for a single entry point."""
+    """Return application settings. Use in Depends(get_settings) or as entry point."""
     return _settings
 
 
-# Singleton; created once at import. Tests can set os.environ before importing or patch get_settings.
+# Singleton; created once at import. Tests can set os.environ or patch get_settings.
 _settings = Settings()
 settings = _settings
 

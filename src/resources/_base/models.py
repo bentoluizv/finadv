@@ -5,10 +5,9 @@ Inherit from BaseTable (without table=True on the base) and set table=True
 on your resource model so it gets id, created_at, updated_at.
 """
 
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlmodel import Field, SQLModel
-
 from ulid import ULID
 
 
@@ -17,11 +16,11 @@ def _ulid_default() -> str:
 
 
 def _utc_now() -> datetime:
-    return datetime.now(timezone.utc)
+    return datetime.now(UTC)
 
 
 class BaseTable(SQLModel):
-    """Mixin for table models: id (ULID), created_at, updated_at. Abstract so no table is created for this class."""
+    """Mixin: id (ULID), created_at, updated_at. Abstract so no table is created."""
 
     __abstract__ = True
 

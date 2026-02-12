@@ -5,11 +5,11 @@ from sqlmodel import Field, SQLModel
 from sqlmodel.ext.asyncio.session import AsyncSession
 
 from src.ext.db import build_engine
-from src.resources._base.models import BaseTable
 from src.resources._base import repository as base_repo
+from src.resources._base.models import BaseTable
 
 
-# Concrete table for testing; not used outside tests. Import registers it with SQLModel.metadata.
+# Concrete table for tests only. Import registers it with SQLModel.metadata.
 class _TestRow(BaseTable, table=True):
     __tablename__ = "test_base_row"  # pyright: ignore[reportAssignmentType]
     name: str = Field(max_length=255)
