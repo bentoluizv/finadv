@@ -43,13 +43,7 @@
       role="main"
       class="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-6"
     >
-      <!--
-        Main content.
-
-        - Full-page responses: render the initial layout and page content here.
-        - HTMX endpoints: return small fragments (tables, rows, form regions) that
-          target this <main> via hx-target="#content" or more specific containers.
-      -->
+      {% block content %}{% endblock %}
     </main>
 
     <footer class="border-t border-slate-800 py-4 text-center text-[11px] text-slate-500">
