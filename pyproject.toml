@@ -35,6 +35,7 @@ quote-style = "single"
 indent-style = "space"
 
 [tool.taskipy.tasks]
+serve = "uv run fastapi dev src/main.py"
 tailwind = "uv run tailwindcss -i ./src/static/main.css -o ./src/static/output.css"
 tailwind_watch = "uv run tailwindcss -i ./src/static/main.css -o ./src/static/output.css --watch"
 ruff = "uv run ruff check src --fix"
