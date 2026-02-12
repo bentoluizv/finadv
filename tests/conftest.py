@@ -7,6 +7,7 @@ Sets in-memory SQLite for tests so db adapter uses :memory: when tests import it
 import os
 import subprocess
 import sys
+from collections.abc import Generator
 from pathlib import Path
 
 import pytest
@@ -31,7 +32,7 @@ def _run_alembic(*args: str, env: dict[str, str] | None = None) -> subprocess.Co
 
 
 @pytest.fixture
-def migrated_db_path(tmp_path: Path) -> str:
+def migrated_db_path(tmp_path: Path) -> Generator[str, None, None]:
     """
     Run Alembic migrations against a temporary SQLite file and yield its path.
 
