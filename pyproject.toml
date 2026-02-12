@@ -38,7 +38,7 @@ indent-style = "space"
 tailwind = "uv run tailwindcss -i ./src/static/main.css -o ./src/static/output.css"
 tailwind_watch = "uv run tailwindcss -i ./src/static/main.css -o ./src/static/output.css --watch"
 ruff = "uv run ruff check src --fix"
-ty = "uv run ty"
+ty = "uv run ty check"
 check = "uv run task ruff && uv run task ty"
 
 [dependency-groups]
