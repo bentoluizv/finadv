@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FinAdv</title>
+    <title>{% block title %}FinAdv{% endblock %}</title>
 
     <!-- Tailwind CSS – built via pytailwindcss into /static/output.css -->
     <link rel="stylesheet" href="/static/output.css" />
@@ -18,6 +18,14 @@
     hx-select="#content"
     hx-swap="innerHTML"
   >
+    <!-- Skip to main content — visually hidden until focused -->
+    <a
+      href="#content"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-emerald-600 focus:px-4 focus:py-2 focus:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+    >
+      Skip to main content
+    </a>
+
     <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur">
       <nav
         class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3"
@@ -26,22 +34,50 @@
         <a href="/" class="flex items-center gap-2 text-sm font-semibold tracking-tight">
           <span
             class="inline-flex h-7 w-7 items-center justify-center rounded bg-emerald-500/10 text-emerald-400 text-xs font-bold"
+            aria-hidden="true"
           >
             FA
           </span>
           <span class="text-slate-50">FinAdv</span>
         </a>
-        <div class="flex items-center gap-4 text-xs font-medium text-slate-300">
-          <a href="/" class="hover:text-emerald-400">Overview</a>
-          <a href="/incomes/" class="hover:text-emerald-400">Incomes</a>
-          <a href="/debts/" class="hover:text-emerald-400">Debts</a>
+        <div class="flex items-center gap-4 text-xs font-medium text-slate-300" role="list">
+          <a
+            href="/"
+            role="listitem"
+            class="hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 rounded-sm {% if active_page == 'overview' %}text-emerald-400 font-semibold{% endif %}"
+            {% if active_page == 'overview' %}aria-current="page"{% endif %}
+          >Overview</a>
+          <a
+            href="/incomes/"
+            role="listitem"
+            class="hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 rounded-sm {% if active_page == 'incomes' %}text-emerald-400 font-semibold{% endif %}"
+            {% if active_page == 'incomes' %}aria-current="page"{% endif %}
+          >Incomes</a>
+          <a
+            href="/debts/"
+            role="listitem"
+            class="hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 rounded-sm {% if active_page == 'debts' %}text-emerald-400 font-semibold{% endif %}"
+            {% if active_page == 'debts' %}aria-current="page"{% endif %}
+          >Debts</a>
         </div>
       </nav>
     </header>
 
+    <!--
+      aria-live region: screen readers announce content swapped in by HTMX.
+      Routes can populate #sr-announcer with a brief message (e.g. "Debt saved.")
+      to give confirmation feedback without a full-page reload.
+    -->
+    <div
+      id="sr-announcer"
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      class="sr-only"
+    ></div>
+
     <main
       id="content"
-      role="main"
       class="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-6"
     >
       {% block content %}{% endblock %}
