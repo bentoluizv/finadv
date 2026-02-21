@@ -3,10 +3,19 @@
 Coding standards and structure: see **`.cursorrules`**.
 
 ## Current Project State
-Building the MVP in three phases:
+Building across twelve planned phases:
 - **Phase 1 (current):** Core CRUD for Incomes and Debts with lean data models and month-based list filtering.
 - **Phase 2:** Overview dashboard — monthly balance, combined list, recurrent debts summary, and upcoming (future due-date) debts.
 - **Phase 3:** User-managed Categories — separate category tables for incomes and debts; optional FK on each record.
+- **Phase 4:** Bank CSV import — parse Nubank, Inter, and Itaú CSV exports into Incomes and Debts with a diff-and-approval panel.
+- **Phase 5:** Charts & Trends — visualize monthly net balance, income vs debt over time, and spending by category.
+- **Phase 6:** Budget Goals & Savings — set monthly spending limits per category and savings targets; track progress.
+- **Phase 7:** Auth / Login — single-user email+password login; enables multi-device access and is a prerequisite for phases 8–12.
+- **Phase 8:** Notifications & Alerts — proactive reminders for upcoming debts and budget-exceeded alerts.
+- **Phase 9:** Multi-user — multiple independent accounts on the same installation; all existing data is scoped per user.
+- **Phase 10:** Households & Shared Expenses — users form households, add shared expenses with custom per-member splits; each member's personal balance includes their share.
+- **Phase 11:** Open Banking — auto-sync transactions via Brazil's Open Finance APIs; reuses the Phase 4 diff-and-approval panel.
+- **Phase 12:** Ad-hoc Expense Splitting — split any single expense with any set of people (registered users or named non-users); simple paid/unpaid settlement per participant.
 
 See the **Roadmap** section for acceptance criteria per phase.
 
@@ -14,7 +23,7 @@ See the **Roadmap** section for acceptance criteria per phase.
 
 **Purpose:** FinAdv helps a single user act as their own financial adviser by tracking **incomes** and **debts** in one place, so they can see where money comes from and where it goes — including recurrent monthly obligations and upcoming bills.
 
-**User:** One person managing their personal finances. No multi-user or roles in any phase of the MVP.
+**User:** One person managing their personal finances. Phase 7 (auth) enables multi-device for the same person. Phase 9 opens the installation to multiple independent users. Phase 10 introduces households — groups of users who share recurring expenses. Phase 12 allows splitting any single expense ad-hoc with anyone.
 
 **How the user interacts:** Web app in the browser. Server-rendered pages with HTMX for partial updates (no SPA). Actions are: navigate (links), submit forms (add/edit/delete income or debt), filter by month, mark debts paid. Prefer small, focused screens and inline feedback (e.g. swap a row after create/delete/pay) instead of full-page reloads where it makes sense.
 
@@ -24,12 +33,29 @@ See the **Roadmap** section for acceptance criteria per phase.
 - **Debt** — `amount` (required), `date` (required, defaults to today), `payment_method` (required: Pix | Credit | Debit | Cash — hardcoded enum), `is_recurrent` (bool, default False), `due_date` (optional — if in the future and `paid=False` the debt is "upcoming"), `paid` (bool, default False), `description` (optional). Phase 3 adds: `category_id` (FK to DebtCategory, nullable).
 - **IncomeCategory** (Phase 3) — `name` (required). User-managed. Separate from DebtCategory.
 - **DebtCategory** (Phase 3) — `name` (required). User-managed. Separate from IncomeCategory.
+- **BudgetGoal** (Phase 6) — `category_id` (FK to DebtCategory, nullable), `amount` (monthly limit), `user_id` (Phase 10 adds FK).
+- **SavingsGoal** (Phase 6) — `amount` (monthly target), `user_id` (Phase 10 adds FK).
+- **Household** (Phase 10) — `name` (required). A named group of users.
+- **HouseholdMember** (Phase 10) — `household_id`, `user_id`. A user can belong to multiple households.
+- **HouseholdExpense** (Phase 10) — `household_id`, `amount` (full expense), `description`, `date`, `payment_method`. Added by any member.
+- **ExpenseShare** (Phase 10) — `expense_id`, `user_id`, `amount` (this member's share). Shares must sum to the full expense amount. Each share flows into the member's personal balance as a Debt equivalent.
+- **ExpenseSplit** (Phase 12) — `debt_id` (FK to Debt, nullable for standalone splits), `created_by_user_id`, `description`, `total_amount`, `date`.
+- **SplitParticipant** (Phase 12) — `split_id`, `user_id` (nullable for non-users), `name` (non-users), `email` (optional, non-users), `amount`, `paid` (bool).
 
 **What the app does — by phase:**
 
 - **Phase 1 — Incomes & Debts:** Full CRUD for each. Lists default to the current calendar month; user can navigate months. Can mark a debt as paid/unpaid inline.
 - **Phase 2 — Overview:** Dashboard for the selected month. Balance card (total income minus total debts = net). Combined chronological list (incomes + debts for selected month). Recurrent debts section (all `is_recurrent=True` debts, not month-filtered). Upcoming section (debts with `due_date` in the future and `paid=False`).
 - **Phase 3 — Categories:** CRUD pages for IncomeCategory and DebtCategory. Income and Debt forms gain an optional category picker from their respective list. Category shown on list rows and detail views. Deleting a category sets affected records' `category_id` to NULL (no cascade delete).
+- **Phase 4 — Bank CSV Import:** User uploads a CSV exported from their bank app (Nubank, Inter, or Itaú) for a selected month. The app detects the bank format, parses rows into a normalized Movement representation, diffs against existing Incomes and Debts for that month, and presents an approval panel before writing anything. Debits become Debts; credits become Incomes. Deduplication is key-based (stable hash of date + amount + description). Manual entries not present in the CSV are flagged informational but kept.
+- **Phase 5 — Charts & Trends:** Visual summaries built from existing Income and Debt data. Monthly net balance over time (bar or line chart), income vs debt trend, and spending breakdown by category for the selected period. No new data model required.
+- **Phase 6 — Budget Goals & Savings:** User sets monthly spending limits per category (e.g. "max R$600 on Food") and savings targets (e.g. "save R$500/month"). Overview and category views show progress vs targets. New `BudgetGoal` and `SavingsGoal` tables per user.
+- **Phase 7 — Auth / Login:** Single-user email+password authentication. Session management. Prerequisite for Phases 8–12. Enables accessing the app from multiple devices with the same account.
+- **Phase 8 — Notifications & Alerts:** Upcoming debt reminders (e.g. "rent due in 3 days") and budget-exceeded alerts (e.g. "you hit 90% of your Food budget"). Requires Phase 7 auth to have a destination (email). Alert rules are configurable per user.
+- **Phase 9 — Multi-user:** A `user_id` is added to all existing records (Income, Debt, Category, Goal). Multiple people can register and each sees only their own data. Requires Phase 7 auth as foundation.
+- **Phase 10 — Households & Shared Expenses:** Users form named households. Any member can add a `HouseholdExpense` with a custom split across members (`ExpenseShare`). The household view shows the full expense and all shares. Each member's personal overview includes their share as part of their balance. A user can belong to multiple households.
+- **Phase 11 — Open Banking:** Auto-sync transactions via Brazil's Open Finance APIs. Replaces manual CSV upload with scheduled or on-demand bank sync. Reuses the Phase 4 diff-and-approval panel. Requires Phase 7 auth for per-user OAuth tokens.
+- **Phase 12 — Ad-hoc Expense Splitting:** Any single Debt (or a standalone record) can be split with any set of people — registered users or named non-users. Custom per-participant amounts; simple paid/unpaid settlement. The payer tracks the full split; registered participants see only their own share.
 
 **Functional requirements:**
 
@@ -37,7 +63,16 @@ See the **Roadmap** section for acceptance criteria per phase.
 - CRUD for **debts**: create, list (month filter, default current month), edit, delete, mark paid/unpaid.
 - **Overview** (Phase 2): month selector; balance summary; combined chronological list; recurrent debts section; upcoming debts section.
 - **Categories** (Phase 3): separate CRUD for IncomeCategory and DebtCategory; optional category field on incomes and debts.
-- Navigation from the layout to: Overview (home), Incomes, Debts. Phase 3 adds: Categories.
+- **Bank CSV Import** (Phase 4): upload a bank CSV for a selected month; auto-detect bank format; parse into Movements; diff against existing records; approval panel before write.
+- **Charts & Trends** (Phase 5): monthly net balance chart, income vs debt trend, spending by category breakdown.
+- **Budget Goals & Savings** (Phase 6): set and track monthly spending limits per category; set and track savings targets.
+- **Auth / Login** (Phase 7): email+password login; session management; multi-device support.
+- **Notifications & Alerts** (Phase 8): upcoming debt reminders; budget-exceeded alerts; configurable rules per user.
+- **Multi-user** (Phase 9): user registration; all data scoped per `user_id`; each user sees only their own records.
+- **Households & Shared Expenses** (Phase 10): create/manage households; add shared expenses with custom per-member splits; household view and personal balance both reflect shares.
+- **Open Banking** (Phase 11): bank sync via Open Finance APIs; diff-and-approval panel reused from Phase 4.
+- **Ad-hoc Expense Splitting** (Phase 12): split any expense with registered users or named non-users; custom amounts per participant; paid/unpaid settlement tracking.
+- Navigation from the layout to: Overview (home), Incomes, Debts. Phase 3 adds: Categories. Phase 4 adds: Import. Phase 10 adds: Households. Phase 12 adds: Splits.
 - Validation and clear error messages on all forms (required fields, valid amounts, valid dates).
 
 **Non-functional requirements:**
@@ -67,6 +102,53 @@ See the **Roadmap** section for acceptance criteria per phase.
 - As a user, I want to **create and manage income categories** (e.g. Salary, Freelance) so I can label where my money comes from.
 - As a user, I want to **create and manage debt categories** (e.g. Food, Rent, Health) so I can label my expenses.
 - As a user, I want to **assign a category** when adding or editing an income or debt so I can keep things organized.
+
+*Phase 4:*
+- As a user, I want to **upload my bank's CSV export** for a given month so I do not have to enter transactions manually.
+- As a user, I want to **see a diff of what will be added or changed** before the import writes anything, so I stay in control.
+- As a user, I want **existing records to be matched and skipped** when I re-import the same file, so I never get duplicates.
+- As a user, I want **manually-added records** that are not in the CSV to be kept and flagged informational in the diff panel.
+
+*Phase 5:*
+- As a user, I want to see my **monthly net balance trend** over time so I can understand if my finances are improving.
+- As a user, I want to see a **breakdown of spending by category** so I know where most of my money goes.
+- As a user, I want to compare **income vs total debts** across months on a chart so I can spot problem months at a glance.
+
+*Phase 6:*
+- As a user, I want to **set a monthly spending limit per category** so I have a budget to aim for.
+- As a user, I want to **see how close I am to my budget limit** in the category view and overview so I can adjust spending in time.
+- As a user, I want to **set a monthly savings target** so the app tracks whether I am building reserves.
+
+*Phase 7:*
+- As a user, I want to **log in with email and password** so my data is protected and only I can access it.
+- As a user, I want to **access the app from any device** using my account so I am not tied to one machine.
+
+*Phase 8:*
+- As a user, I want to **receive a reminder** when a debt is due soon so I do not miss payments.
+- As a user, I want to **be alerted when I am close to or over a budget limit** so I can act before the month ends.
+- As a user, I want to **configure which alerts I receive** so I only get notifications that are useful to me.
+
+*Phase 9:*
+- As a person, I want to **create my own account** so I can use the app independently from other users on the same installation.
+- As a user, I want to be sure that **my data is private** and other users cannot see my incomes, debts, or goals.
+
+*Phase 10:*
+- As a user, I want to **create a household** and invite others so we can manage shared expenses together.
+- As a household member, I want to **add a shared expense** (e.g. rent, utilities) and assign a custom amount to each member so splits reflect reality.
+- As a household member, I want to **see all household expenses** in a dedicated view so I know what the group owes collectively.
+- As a user, I want my **share of household expenses to appear in my personal balance** so my overview reflects my true financial position.
+- As a user, I want to **belong to multiple households** (e.g. partner household and a flatmate household) independently.
+
+*Phase 11:*
+- As a user, I want to **connect my bank account** via Open Finance so my transactions are synced automatically.
+- As a user, I want to **review and approve synced transactions** before they are saved, so I stay in control of my data.
+- As a user, I want to **trigger a sync on demand** or have it happen on a schedule so my data is always up to date.
+
+*Phase 12:*
+- As a user, I want to **split any expense** with others (app users or not) so I can track who owes what after a shared event.
+- As a user, I want to **add non-registered people** as participants using just their name so I am not limited to app users.
+- As a user, I want to **see all splits I created** and their settlement status so I know who still owes me.
+- As a user, I want to **see splits others added me to** and mark my share as paid so my obligations are clear.
 
 When implementing a feature, align with the phase it belongs to; do not add flows or screens that are out of scope (see Out of Scope and Roadmap).
 
@@ -355,6 +437,62 @@ Resources: `income_categories`, `debt_categories`. Extensions to `incomes` and `
 - Category name shown on income and debt list rows.
 - Navigation in the layout includes a link to Categories management.
 
+### Phase 4 — Bank CSV Import
+**Goal:** Let the user import a monthly CSV exported from their bank app so they do not have to enter transactions manually. The app diffs the parsed data against existing records and asks for approval before writing anything.
+
+Resources: `imports` (new — upload, parse, diff, approve). Reads from and writes to `incomes` and `debts` repositories.
+
+**Supported banks (initial):** Nubank, Inter, Itaú.
+
+**Key concept — Movement:**
+An intermediate, bank-neutral record produced by each bank parser. Not stored in the DB; used only during the import flow.
+
+```
+Movement:
+  bank_ref: str        # sha256(date + amount + description) — deduplication key
+  date: date
+  amount: Decimal
+  direction: Credit | Debit   # Credit → Income, Debit → Debt
+  description: str
+  bank: Bank           # Nubank | Inter | Itau
+```
+
+**Bank parsers:**
+Each parser is a pure function `parse(file_content: str) -> list[Movement]`. Bank is auto-detected from CSV column headers. No bank-specific logic leaks outside the parser module.
+
+| Bank | Notable format details |
+|------|----------------------|
+| Nubank | UTF-8; columns: date, category, title, amount (negative = debit) |
+| Inter | UTF-8; credit and debit may be in separate columns |
+| Itaú | Latin-1 encoded, semicolon-separated, locale date format |
+
+**Import flow:**
+1. User selects month and uploads CSV.
+2. App detects bank format, parses rows → `list[Movement]`.
+3. App queries existing Incomes + Debts for that month and computes a diff.
+4. Diff panel (HTMX fragment) is shown — no write yet.
+5. User reviews and approves; confirmed rows are bulk-created or updated.
+
+**Diff states:**
+
+| State | Meaning | Default action | UI |
+|-------|---------|---------------|-----|
+| New | Movement not in app | Include (pre-checked) | Green |
+| Matched | Exists, identical | Skip | Gray |
+| Changed | Exists, differs | Include, shows old → new | Yellow |
+| Manual-only | In app, not in CSV | Keep (informational) | Blue |
+
+**Classification rules (no override in UI):**
+- `Credit` → Income. `Debit` → Debt. If the user disagrees, they fix the record manually after import.
+
+**Acceptance criteria:**
+- Upload page accepts CSV; detects bank from headers; rejects unrecognised format with a clear error.
+- Diff panel shows all four states; matched rows are collapsed by default.
+- "Approve all new" shortcut pre-checks all New rows.
+- Submitting the approved diff creates new records and updates changed records; Matched and Manual-only records are untouched.
+- Re-importing the same file produces zero New or Changed rows (idempotent).
+- Navigation in the layout includes a link to Import.
+
 ## Working with Resources
 
 Development is test-driven: for each functionality, add a test first (focused on business logic), then the minimal code to pass it. Do not create models, DB tables, or new resource pieces for behavior you are not yet testing.
@@ -376,8 +514,118 @@ When asked to create a new feature:
 1. Add an `async def` route in the resource's `routes.py`; `await` a function from `logic.py` (no business logic in the route).
 2. Return a small HTML fragment (e.g. from `templates/`) for `hx-swap`; prefer fragments over full-page responses.
 
-## Out of Scope (MVP)
-Do not add unless explicitly requested: **auth / login**, **multi-user / multi-tenant**, **REST API for mobile**, **Open Banking / external APIs**, **charts or graphs**, **budget goals**, **savings tracking**, **CSV export**. Keep the MVP focused on the three phases above.
+### Phase 5 — Charts & Trends
+**Goal:** Turn the accumulated Income and Debt data into visual summaries so the user can spot patterns and problem months at a glance.
+
+Resources: `overview` extended (read-only; pulls from incomes + debts repositories). No new DB tables needed.
+
+**Acceptance criteria:**
+- Monthly net balance chart (income minus debts per month) covering the last 12 months.
+- Income vs total debts bar or line chart for the selected period.
+- Spending breakdown by category for the selected month (donut or bar chart).
+- Charts are rendered server-side (SVG or a lightweight JS chart lib via CDN); no SPA framework introduced.
+
+### Phase 6 — Budget Goals & Savings
+**Goal:** Let the user set monthly spending targets per category and savings goals, and track progress against them.
+
+Resources: `budget_goals`, `savings_goals` (new). Extensions to `overview`.
+
+**Acceptance criteria:**
+- Can create, edit, and delete a monthly spending limit for any DebtCategory.
+- Category view and Overview show actual spend vs budget limit for the current month (e.g. progress bar).
+- Can create, edit, and delete a monthly savings target (target amount per month).
+- Overview shows actual savings (net balance when positive) vs savings target.
+- Deleting a category does not delete its budget goal; goal becomes unlinked.
+
+### Phase 7 — Auth / Login
+**Goal:** Protect the app with single-user email+password authentication and enable multi-device access.
+
+Resources: `auth` (new — login, logout, session). All existing resources become session-gated.
+
+**Acceptance criteria:**
+- Login page with email + password. Invalid credentials show a clear error.
+- Authenticated session persists across browser restarts (secure cookie).
+- All routes redirect to login if no valid session is present.
+- Logout clears the session.
+- No registration flow — single user, credentials configured via environment variables or a one-time setup command.
+
+### Phase 8 — Notifications & Alerts
+**Goal:** Proactively inform the user about upcoming debts and budget limits so they can act before it is too late.
+
+Resources: `alerts` (new — rules, delivery log). Requires Phase 7 auth.
+
+**Acceptance criteria:**
+- User can configure an upcoming-debt reminder: how many days before `due_date` to be notified.
+- User can configure a budget-limit alert: notify when spending reaches X% of the limit for a category.
+- Alerts are delivered by email (requires SMTP config in settings).
+- User can enable or disable each alert type individually.
+- Delivery log shows sent alerts (date, type, message) for reference.
+
+### Phase 9 — Multi-user
+**Goal:** Open the installation to multiple independent users, each with their own private data. Prerequisite for Phase 10.
+
+Resources: `users` (new — registration, account). `user_id` FK added to all existing resources via migration. Requires Phase 7 auth.
+
+**Acceptance criteria:**
+- Registration page: email + password. No invite required (open registration, or admin-controlled via config).
+- Each user sees only their own Incomes, Debts, Categories, Goals, and Import history.
+- Existing single-user data is migrated to the first registered account.
+- Login and session management work per user (Phase 7 foundation reused).
+- No user can access or modify another user's records.
+
+### Phase 10 — Households & Shared Expenses
+**Goal:** Let users form households, record shared expenses with custom per-member splits, and have each member's share reflected in their personal balance automatically.
+
+Resources: `households`, `household_members`, `household_expenses`, `expense_shares` (all new). Requires Phase 9 multi-user.
+
+**Key rules:**
+- A user can belong to multiple households.
+- Any household member can add a `HouseholdExpense`.
+- When adding an expense, the creator assigns a custom `amount` to each member. Shares must sum to the full expense amount.
+- Each `ExpenseShare` contributes to the member's personal balance as a debt-equivalent (counted in their monthly total debts).
+- Deleting a household expense removes all its shares and withdraws them from members' balances.
+- A user leaving a household does not delete past expense shares; historical data is preserved.
+
+**Acceptance criteria:**
+- Can create, rename, and delete a household.
+- Can invite existing users to a household; invited user must accept.
+- Can add a shared expense with a description, date, payment method, full amount, and custom per-member split.
+- Validation: shares must sum to the full expense amount before saving.
+- Household view lists all expenses with each member's share and payment status.
+- Personal overview and balance include the user's expense shares for the selected month.
+- Can mark a share as paid (own share only).
+- Navigation includes a Households link for users who belong to at least one household.
+
+### Phase 11 — Open Banking
+**Goal:** Auto-sync transactions from the user's bank via Brazil's Open Finance APIs, replacing manual CSV uploads.
+
+Resources: `bank_connections` (new — OAuth tokens, sync state). Reuses `imports` diff-and-approval logic from Phase 4. Requires Phase 7 auth.
+
+**Acceptance criteria:**
+- User can connect a supported bank account via Open Finance OAuth flow.
+- User can trigger a manual sync or configure a sync schedule (e.g. daily).
+- Synced transactions go through the same diff-and-approval panel as Phase 4 CSV import.
+- User can disconnect a bank connection; existing records are kept.
+- Supported banks at launch: same initial set as Phase 4 (Nubank, Inter, Itaú) subject to Open Finance API availability.
+
+### Phase 12 — Ad-hoc Expense Splitting
+**Goal:** Allow any single expense to be split with any set of people — registered users or named non-users — without requiring a permanent household group.
+
+Resources: `expense_splits`, `split_participants` (new). Requires Phase 9 (multi-user).
+
+**Acceptance criteria:**
+- Any Debt can be converted to a split expense; standalone splits are also supported.
+- Participants can be registered users (by email) or named non-users (name + optional email).
+- Per-participant amounts must sum to the total expense amount; validated server-side.
+- Payer sees all participants and their settlement status.
+- Registered participants see only their own share and the total; not other participants' amounts.
+- Registered participants can mark their own share as paid.
+- Payer can mark non-user participants' shares as paid on their behalf.
+- Optional email notification to non-user participants on split creation.
+- Splits navigation added to layout.
+
+## Out of Scope
+Do not add unless explicitly requested: **REST API for mobile**, **charts library beyond what is needed for Phase 5**, **external expense-splitting services (e.g. Splitwise integration)**. Keep work phase-focused; do not implement features from a later phase unless asked.
 
 ## Commits
 - **Semantic prefixes:** Every commit message starts with one of: `feat`, `fix`, `test`, `refactor`, `chore`, `docs`, `style`, `ci`.
