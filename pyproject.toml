@@ -41,6 +41,9 @@ tailwind_watch = "uv run tailwindcss -i ./src/static/main.css -o ./src/static/ou
 ruff = "uv run ruff check src --fix"
 ty = "uv run ty check"
 check = "uv run task ruff && uv run task ty"
+dev = "docker compose up --build"
+dev-down = "docker compose down"
+dev-logs = "docker compose logs -f app"
 
 [dependency-groups]
 dev = [
