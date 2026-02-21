@@ -1,13 +1,26 @@
-# FinAdv: Functional Financial Advisor
+# FinAdv — Personal Financial Advisor
 
-A minimalist financial tracking system for incomes and debts: FastAPI, HTMX, and functional domain logic. Single-user MVP—track where money comes from and where it goes.
+> Track where your money comes from and where it goes — personal finances, shared household expenses, trends, and bank sync in one place.
 
-## Prerequisites
+FinAdv is a personal finance web app built to grow with you: start by logging incomes and debts manually, import from your bank's CSV export, visualize trends, set budget goals, sync automatically via Open Banking, manage shared household expenses, and split any one-off expense with friends — all in a fast, keyboard-friendly interface.
 
-- Python 3.14
-- [uv](https://astral.sh/uv)
+---
 
-## Setup
+## Tech stack
+
+| Layer | Tools |
+|-------|-------|
+| Language | Python 3.14, [uv](https://astral.sh/uv) |
+| Web | FastAPI, HTMX (fasthx), htmy |
+| Data | SQLModel, Alembic, pydantic-settings |
+| Styling | Tailwind CSS (pytailwindcss) |
+| Quality | Ruff, Ty, pytest |
+
+---
+
+## Getting started
+
+**Prerequisites:** Python 3.14 and [uv](https://astral.sh/uv).
 
 ```bash
 git clone <repo-url>
@@ -15,71 +28,82 @@ cd finadv
 uv sync
 ```
 
-Configure via environment (e.g. `.env`); use pydantic-settings. No hardcoded secrets or DB URLs.
+Copy `.env.example` to `.env` (if provided) and set `DATABASE_URL`. The app uses SQLite by default — no database server required.
 
-## Running the app
+Apply migrations:
 
-- **Dev server:** `uv run fastapi dev src/main.py`
-- **CSS:** `uv run task tailwind` (one-off) or `uv run task tailwind_watch` (watch). Assets from `src/static/` served at `/static/`.
+```bash
+uv run alembic upgrade head
+```
 
-## Developer workflow
+Build Tailwind CSS:
 
-| Action | Command |
-|--------|---------|
-| Lint + type-check | `uv run task check` |
-| Lint only | `uv run task ruff` |
-| Type-check only | `uv run task ty` |
-| Tests | `uv run pytest` |
-| Tailwind build | `uv run task tailwind` |
-| Tailwind watch | `uv run task tailwind_watch` |
+```bash
+uv run task tailwind
+```
 
-Run **`uv run task check`** after editing Python under `src`; fix issues before committing.
+Start the dev server:
 
-**Migrations (after model changes):**
+```bash
+uv run fastapi dev src/main.py
+```
 
-1. Update `src/resources/<resource>/models.py`; ensure models are imported for Alembic.
-2. `uv run alembic revision --autogenerate -m "description"`
-3. `uv run alembic upgrade head`
+Open [http://localhost:8000](http://localhost:8000) in your browser.
 
-**Add dependency:** `uv add <pkg>` or `uv add --dev <pkg>`.
+---
 
-## Architecture
+## Developer commands
 
-Code lives under **`src/`**.
-
-| Path | Purpose |
+| Task | Command |
 |------|---------|
-| `src/resources/<name>/` | Domain resource: `models.py`, `repository.py`, `logic.py`, `routes.py`, `templates/`, `tests/` |
-| `src/resources/_base/` | Shared base model, repository helpers, layout; no routes |
-| `src/ext/` | DB, settings, shared fixtures |
-| `src/static/` | Built CSS and static assets |
+| Dev server | `uv run fastapi dev src/main.py` |
+| Lint + type-check | `uv run task check` |
+| Tests | `uv run pytest` |
+| CSS build | `uv run task tailwind` |
+| CSS watch | `uv run task tailwind_watch` |
+| Add dependency | `uv add <pkg>` |
 
-**Layers:** models → repository → logic → routes → templates → tests. Routes only validate, call logic/repository, and return; no DB or business logic in routes. All DB access in `repository.py`; all I/O async.
+**After model changes:**
 
-Details and patterns: **AGENT.md**.
+```bash
+uv run alembic revision --autogenerate -m "describe the change"
+uv run alembic upgrade head
+```
 
-## Testing
+---
 
-- **Location:** `src/resources/<name>/tests/` next to the code; shared tests in project `tests/`.
-- **Focus:** Behavior and outcomes; avoid testing the framework. One main concern per test; use shared fixtures from `conftest.py`.
-- **Async:** Use `async def` tests; asyncio mode is set in `pyproject.toml`.
+## Project layout
 
-Run: `uv run pytest` (optionally `-v` or a path).
+```
+src/
+  main.py                   # App entry point; mounts all routers
+  resources/
+    _base/                  # Shared base model, repository helpers, layout
+    incomes/                # Income resource: models, logic, repository, routes, templates, tests
+    debts/                  # Debt resource: same structure
+  ext/                      # Infrastructure: DB engine, settings, shared fixtures
+  static/                   # Built CSS and static assets
+```
 
-## Code quality
+Full architecture, patterns, coding standards, and TDD workflow: **[AGENT.md](AGENT.md)**.
 
-- **Ruff:** Single quotes, 2-space indent, 88-char line length. Rule sets: E, F, I, UP, B, C4, SIM (see AGENT.md).
-- **Commits:** Semantic, atomic; prefix: `chore`, `feat`, `test`, `fix`, `doc`, etc.
+---
 
-## More
+## Roadmap
 
-- **AGENT.md** — Product/UX, layout, Ruff details, patterns, adding resources, migrations, commits.
-- **.cursorrules** — Coding standards for AI-assisted editing.
+| Phase | Name | Status |
+|-------|------|--------|
+| 1 | Core CRUD — Incomes & Debts | **current** |
+| 2 | Overview Dashboard | planned |
+| 3 | User-managed Categories | planned |
+| 4 | Bank CSV Import | planned |
+| 5 | Charts & Trends | planned |
+| 6 | Budget Goals & Savings | planned |
+| 7 | Auth / Login | planned |
+| 8 | Notifications & Alerts | planned |
+| 9 | Multi-user | planned |
+| 10 | Households & Shared Expenses | planned |
+| 11 | Open Banking | planned |
+| 12 | Ad-hoc Expense Splitting | planned |
 
-## Tech stack
-
-- **Runtime:** Python 3.14, uv  
-- **Web:** FastAPI, HTMX (fasthx), htmy  
-- **Data:** SQLModel, Alembic, pydantic-settings  
-- **Quality:** Ruff, Ty, pytest, taskipy  
-- **CSS:** Tailwind (pytailwindcss) → `src/static/output.css`
+See **[ROADMAP.md](ROADMAP.md)** for the full description of each phase.
