@@ -1,0 +1,35 @@
+# Version control
+.git/
+.gitignore
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+.ruff_cache/
+
+# Virtual environments
+.venv/
+
+# Local database files — persisted via Docker named volume, not the image
+*.db
+*.db-journal
+
+# Environment files — never bake secrets into the image
+.env
+
+# Test artifacts
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+
+# Editor / OS
+.idea/
+.vscode/
+*.swp
+.DS_Store
+
+# Docs and plans
+*.md
+.cursor/
