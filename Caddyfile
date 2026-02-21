@@ -1,0 +1,13 @@
+{
+	log {
+		format console
+	}
+}
+
+finadv.local {
+	tls internal
+	reverse_proxy app:8000
+	header Cache-Control no-store
+	header -ETag
+	header -Last-Modified
+}
