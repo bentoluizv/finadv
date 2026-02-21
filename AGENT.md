@@ -3,7 +3,7 @@
 Coding standards and structure: see **`.cursorrules`**.
 
 ## Current Project State
-Building across twelve planned phases:
+Building across eleven planned phases:
 - **Phase 1 (current):** Core CRUD for Incomes and Debts with lean data models and month-based list filtering.
 - **Phase 2:** Overview dashboard — monthly balance, combined list, recurrent debts summary, and upcoming (future due-date) debts.
 - **Phase 3:** User-managed Categories — separate category tables for incomes and debts; optional FK on each record.
@@ -15,7 +15,6 @@ Building across twelve planned phases:
 - **Phase 9:** Multi-user — multiple independent accounts on the same installation; all existing data is scoped per user.
 - **Phase 10:** Households & Shared Expenses — users form households, add shared expenses with custom per-member splits; each member's personal balance includes their share.
 - **Phase 11:** Open Banking — auto-sync transactions via Brazil's Open Finance APIs; reuses the Phase 4 diff-and-approval panel.
-- **Phase 12:** Ad-hoc Expense Splitting — split any single expense with any set of people (registered users or named non-users); simple paid/unpaid settlement per participant.
 
 See the **Roadmap** section for acceptance criteria per phase.
 
@@ -23,7 +22,7 @@ See the **Roadmap** section for acceptance criteria per phase.
 
 **Purpose:** FinAdv helps a single user act as their own financial adviser by tracking **incomes** and **debts** in one place, so they can see where money comes from and where it goes — including recurrent monthly obligations and upcoming bills.
 
-**User:** One person managing their personal finances. Phase 7 (auth) enables multi-device for the same person. Phase 9 opens the installation to multiple independent users. Phase 10 introduces households — groups of users who share recurring expenses. Phase 12 allows splitting any single expense ad-hoc with anyone.
+**User:** One person managing their personal finances. Phase 7 (auth) enables multi-device for the same person. Phase 9 opens the installation to multiple independent users. Phase 10 introduces households — groups of users who share recurring expenses.
 
 **How the user interacts:** Web app in the browser. Server-rendered pages with HTMX for partial updates (no SPA). Actions are: navigate (links), submit forms (add/edit/delete income or debt), filter by month, mark debts paid. Prefer small, focused screens and inline feedback (e.g. swap a row after create/delete/pay) instead of full-page reloads where it makes sense.
 
@@ -39,8 +38,6 @@ See the **Roadmap** section for acceptance criteria per phase.
 - **HouseholdMember** (Phase 10) — `household_id`, `user_id`. A user can belong to multiple households.
 - **HouseholdExpense** (Phase 10) — `household_id`, `amount` (full expense), `description`, `date`, `payment_method`. Added by any member.
 - **ExpenseShare** (Phase 10) — `expense_id`, `user_id`, `amount` (this member's share). Shares must sum to the full expense amount. Each share flows into the member's personal balance as a Debt equivalent.
-- **ExpenseSplit** (Phase 12) — `debt_id` (FK to Debt, nullable for standalone splits), `created_by_user_id`, `description`, `total_amount`, `date`.
-- **SplitParticipant** (Phase 12) — `split_id`, `user_id` (nullable for non-users), `name` (non-users), `email` (optional, non-users), `amount`, `paid` (bool).
 
 **What the app does — by phase:**
 
@@ -50,12 +47,11 @@ See the **Roadmap** section for acceptance criteria per phase.
 - **Phase 4 — Bank CSV Import:** User uploads a CSV exported from their bank app (Nubank, Inter, or Itaú) for a selected month. The app detects the bank format, parses rows into a normalized Movement representation, diffs against existing Incomes and Debts for that month, and presents an approval panel before writing anything. Debits become Debts; credits become Incomes. Deduplication is key-based (stable hash of date + amount + description). Manual entries not present in the CSV are flagged informational but kept.
 - **Phase 5 — Charts & Trends:** Visual summaries built from existing Income and Debt data. Monthly net balance over time (bar or line chart), income vs debt trend, and spending breakdown by category for the selected period. No new data model required.
 - **Phase 6 — Budget Goals & Savings:** User sets monthly spending limits per category (e.g. "max R$600 on Food") and savings targets (e.g. "save R$500/month"). Overview and category views show progress vs targets. New `BudgetGoal` and `SavingsGoal` tables per user.
-- **Phase 7 — Auth / Login:** Single-user email+password authentication. Session management. Prerequisite for Phases 8–12. Enables accessing the app from multiple devices with the same account.
+- **Phase 7 — Auth / Login:** Single-user email+password authentication. Session management. Prerequisite for Phases 8–11. Enables accessing the app from multiple devices with the same account.
 - **Phase 8 — Notifications & Alerts:** Upcoming debt reminders (e.g. "rent due in 3 days") and budget-exceeded alerts (e.g. "you hit 90% of your Food budget"). Requires Phase 7 auth to have a destination (email). Alert rules are configurable per user.
 - **Phase 9 — Multi-user:** A `user_id` is added to all existing records (Income, Debt, Category, Goal). Multiple people can register and each sees only their own data. Requires Phase 7 auth as foundation.
 - **Phase 10 — Households & Shared Expenses:** Users form named households. Any member can add a `HouseholdExpense` with a custom split across members (`ExpenseShare`). The household view shows the full expense and all shares. Each member's personal overview includes their share as part of their balance. A user can belong to multiple households.
 - **Phase 11 — Open Banking:** Auto-sync transactions via Brazil's Open Finance APIs. Replaces manual CSV upload with scheduled or on-demand bank sync. Reuses the Phase 4 diff-and-approval panel. Requires Phase 7 auth for per-user OAuth tokens.
-- **Phase 12 — Ad-hoc Expense Splitting:** Any single Debt (or a standalone record) can be split with any set of people — registered users or named non-users. Custom per-participant amounts; simple paid/unpaid settlement. The payer tracks the full split; registered participants see only their own share.
 
 **Functional requirements:**
 
@@ -71,15 +67,14 @@ See the **Roadmap** section for acceptance criteria per phase.
 - **Multi-user** (Phase 9): user registration; all data scoped per `user_id`; each user sees only their own records.
 - **Households & Shared Expenses** (Phase 10): create/manage households; add shared expenses with custom per-member splits; household view and personal balance both reflect shares.
 - **Open Banking** (Phase 11): bank sync via Open Finance APIs; diff-and-approval panel reused from Phase 4.
-- **Ad-hoc Expense Splitting** (Phase 12): split any expense with registered users or named non-users; custom amounts per participant; paid/unpaid settlement tracking.
-- Navigation from the layout to: Overview (home), Incomes, Debts. Phase 3 adds: Categories. Phase 4 adds: Import. Phase 10 adds: Households. Phase 12 adds: Splits.
+- Navigation from the layout to: Overview (home), Incomes, Debts. Phase 3 adds: Categories. Phase 4 adds: Import. Phase 10 adds: Households.
 - Validation and clear error messages on all forms (required fields, valid amounts, valid dates).
 
 **Non-functional requirements:**
 - **Simplicity:** Few screens and concepts; no unnecessary features.
 - **Clarity:** Labels understandable at a glance (e.g. "Recurrent", "Upcoming", "Fixed", "Variable").
 - **Responsive:** Usable on small screens (mobile-friendly layout).
-- **Accessibility:** Semantic HTML, labels, and keyboard navigation; avoid interaction that relies only on hover or tiny targets.
+- **Accessibility:** Every screen must meet WCAG 2.1 AA. Required patterns: skip-to-content link, `aria-current="page"` on the active nav item, `<label>` associated with every input, `aria-required` / `aria-invalid` / `aria-describedby` for form validation errors, `aria-live="polite"` region for HTMX partial updates, `aria-label` on icon-only controls, and a visible `focus-visible` ring on all interactive elements. See `DESIGN.md` for the full reference.
 - **Performance:** Fast responses; HTMX updates only the changed part where appropriate.
 
 **User stories:**
@@ -143,12 +138,6 @@ See the **Roadmap** section for acceptance criteria per phase.
 - As a user, I want to **connect my bank account** via Open Finance so my transactions are synced automatically.
 - As a user, I want to **review and approve synced transactions** before they are saved, so I stay in control of my data.
 - As a user, I want to **trigger a sync on demand** or have it happen on a schedule so my data is always up to date.
-
-*Phase 12:*
-- As a user, I want to **split any expense** with others (app users or not) so I can track who owes what after a shared event.
-- As a user, I want to **add non-registered people** as participants using just their name so I am not limited to app users.
-- As a user, I want to **see all splits I created** and their settlement status so I know who still owes me.
-- As a user, I want to **see splits others added me to** and mark my share as paid so my obligations are clear.
 
 When implementing a feature, align with the phase it belongs to; do not add flows or screens that are out of scope (see Out of Scope and Roadmap).
 

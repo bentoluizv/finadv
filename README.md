@@ -2,7 +2,7 @@
 
 > Track where your money comes from and where it goes — personal finances, shared household expenses, trends, and bank sync in one place.
 
-FinAdv is a personal finance web app built to grow with you: start by logging incomes and debts manually, import from your bank's CSV export, visualize trends, set budget goals, sync automatically via Open Banking, manage shared household expenses, and split any one-off expense with friends — all in a fast, keyboard-friendly interface.
+FinAdv is a personal finance web app built to grow with you: start by logging incomes and debts manually, import from your bank's CSV export, visualize trends, set budget goals, and sync automatically via Open Banking — all in a fast, keyboard-friendly interface.
 
 ---
 
@@ -20,7 +20,7 @@ FinAdv is a personal finance web app built to grow with you: start by logging in
 
 ## Getting started
 
-**Prerequisites:** Python 3.14 and [uv](https://astral.sh/uv).
+**Prerequisites:** Python 3.14, [uv](https://astral.sh/uv), Docker, and `libnss3-tools` (for browser CA trust: `sudo apt install libnss3-tools -y`).
 
 ```bash
 git clone <repo-url>
@@ -28,27 +28,105 @@ cd finadv
 uv sync
 ```
 
-Copy `.env.example` to `.env` (if provided) and set `DATABASE_URL`. The app uses SQLite by default — no database server required.
-
-Apply migrations:
+All settings have working defaults defined in `src/ext/settings.py` — no configuration is required to get started. If you need to override a value (e.g. point to a different database), create a `.env` file in the project root:
 
 ```bash
-uv run alembic upgrade head
+# .env — optional, gitignored
+DATABASE_URL=sqlite+aiosqlite:///./data/finadv.db
+SQL_ECHO=true
 ```
 
-Build Tailwind CSS:
+## Docker dev environment
+
+The local stack (app + Caddy HTTPS) runs with:
 
 ```bash
-uv run task tailwind
+uv run task dev
 ```
 
-Start the dev server:
+### One-time setup per machine
+
+This only needs to be done once per developer machine to establish DNS, browser trust, and kernel networking for `https://finadv.local`.
+
+**Step 1 — Increase the UDP receive buffer (required for HTTP/3)**
+
+Caddy uses QUIC (HTTP/3) on port 443 UDP. The default Linux kernel buffer is too small and causes a warning in Caddy's logs. Set it once and persist across reboots:
 
 ```bash
-uv run fastapi dev src/main.py
+echo 'net.core.rmem_max=7500000' | sudo tee -a /etc/sysctl.conf
+echo 'net.core.wmem_max=7500000' | sudo tee -a /etc/sysctl.conf
+sudo sysctl -p
 ```
 
-Open [http://localhost:8000](http://localhost:8000) in your browser.
+**Step 2 — Add the local domain to `/etc/hosts`**
+
+Check if it is already there:
+
+```bash
+grep finadv /etc/hosts
+```
+
+If the line is missing, add it:
+
+```bash
+echo "127.0.0.1 finadv.local" | sudo tee -a /etc/hosts
+```
+
+**Step 3 — Start the stack**
+
+```bash
+uv run task dev
+```
+
+Wait until you see this line in the output before continuing:
+
+```
+Application startup complete.
+```
+
+**Step 4 — Copy Caddy's CA certificate to the host**
+
+Open a second terminal and run:
+
+```bash
+docker compose cp \
+    caddy:/data/caddy/pki/authorities/local/root.crt \
+    /usr/local/share/ca-certificates/caddy-local-ca.crt \
+  && sudo update-ca-certificates
+```
+
+This installs Caddy's local CA into the OS trust store so `curl` and system tools accept `https://finadv.local`.
+
+**Step 5 — Trust the CA in your browser**
+
+Chrome, Chromium, and Edge use an NSS database separate from the OS store:
+
+```bash
+mkdir -p $HOME/.pki/nssdb
+certutil -d sql:$HOME/.pki/nssdb -N --empty-password 2>/dev/null || true
+certutil -d sql:$HOME/.pki/nssdb -A -t "C,," -n "Caddy Local CA" \
+  -i /usr/local/share/ca-certificates/caddy-local-ca.crt
+```
+
+Firefox does not use the NSS database on disk. Instead, go to:
+Settings → Privacy & Security → Certificates → View Certificates → Authorities → Import
+and select `/usr/local/share/ca-certificates/caddy-local-ca.crt`.
+
+**Step 6 — Restart the browser and open the app**
+
+Fully close and reopen the browser (not just a new tab — the NSS database is loaded at browser startup). Then open:
+
+[https://finadv.local](https://finadv.local)
+
+You should see a valid padlock with no certificate warning.
+
+---
+
+The `db_data` Docker volume persists the SQLite database across restarts. To wipe it intentionally:
+
+```bash
+docker compose down -v
+```
 
 ---
 
@@ -56,11 +134,12 @@ Open [http://localhost:8000](http://localhost:8000) in your browser.
 
 | Task | Command |
 |------|---------|
-| Dev server | `uv run fastapi dev src/main.py` |
+| Start Docker dev stack | `uv run task dev` |
+| Stop Docker dev stack | `uv run task dev-down` |
+| Tail app logs | `uv run task dev-logs` |
+| Watch and rebuild CSS | `uv run task tailwind_watch` |
 | Lint + type-check | `uv run task check` |
 | Tests | `uv run pytest` |
-| CSS build | `uv run task tailwind` |
-| CSS watch | `uv run task tailwind_watch` |
 | Add dependency | `uv add <pkg>` |
 
 **After model changes:**
@@ -121,6 +200,7 @@ gh pr create --fill
 | Lint & type-check | `uv run task ruff` + `uv run task ty` |
 | Tests | `uv run pytest --tb=short -q` |
 | Migrations | `alembic upgrade head` → `downgrade base` → `upgrade head` (round-trip) |
+| Docker build | Verifies the Dockerfile builds successfully on every PR |
 | AI code review | CodeRabbit — reviews diff against architecture rules, coding standards, TDD requirements, and phase alignment |
 
 CodeRabbit is configured in `.coderabbit.yaml`. To activate it, install the [CodeRabbit GitHub App](https://github.com/apps/coderabbit-ai) on the repository (free for public repos).
@@ -159,6 +239,5 @@ Full architecture, patterns, coding standards, and TDD workflow: **[AGENT.md](AG
 | 9 | Multi-user | planned |
 | 10 | Households & Shared Expenses | planned |
 | 11 | Open Banking | planned |
-| 12 | Ad-hoc Expense Splitting | planned |
 
 See **[ROADMAP.md](ROADMAP.md)** for the full description of each phase.

@@ -23,9 +23,8 @@
 | 9 | Multi-user | 10–11 | 10 | Jul 24, 2026 |
 | 10 | Households & Shared Expenses | 12–13 | 14 | Aug 21, 2026 |
 | 11 | Open Banking | 14–15 | 12 | Sep 18, 2026 |
-| 12 | Ad-hoc Expense Splitting | 16–17 | 10 | Oct 16, 2026 |
 
-**Total estimated effort:** ~112 dev days across 17 sprints (~8 months).
+**Total estimated effort:** ~102 dev days across 15 sprints (~8 months).
 
 Dates are targets, not commitments. Sprint boundaries may shift; re-estimate at the start of each phase.
 
@@ -791,102 +790,6 @@ As a user, I want to disconnect a bank account so that no further syncs are perf
 
 ---
 
-## Phase 12 — Ad-hoc Expense Splitting
-
-**Milestone:** Sprints 16–17 · **Target:** Oct 16, 2026 · **Effort:** 10 dev days
-**Dependencies:** Phase 9 (multi-user — required to identify registered participants). Phase 10 (households, for context; not strictly required but splitting is a natural extension of shared-expenses thinking).
-
-### Goal
-
-Allow any single expense to be split with any set of people — registered users or not — without requiring a permanent household group. You pay for dinner for four, record it once, and track who owes what. Simple paid/unpaid settlement per person; no money moves through the app.
-
-### How it differs from Phase 10
-
-| | Phase 10 — Households | Phase 12 — Ad-hoc Splitting |
-|-|----------------------|----------------------------|
-| Group | Fixed household (persistent members) | Any people, defined per expense |
-| Frequency | Recurring obligations (rent, utilities) | One-off events (dinner, taxi, trip) |
-| Participants | Must be registered users | Registered users OR named non-users |
-| Settlement | Per-share paid toggle | Per-share paid toggle |
-
-### Use Cases
-
-#### UC-12.1 — Split an expense with others
-
-As a user, I want to mark any debt as a split expense and assign a share to each participant so that I can track who owes what after a shared event.
-
-**Fields:** participants (one or more — registered users by email, or named non-users by name + optional email), per-participant amount (custom), description of the split (optional, defaults to the expense description).
-
-**Acceptance criteria:**
-- Any existing Debt can be converted to a split expense, or a split can be created standalone.
-- At least one other participant is required (in addition to the payer).
-- Per-participant amounts plus the payer's own share must sum to the total expense amount.
-- Validation runs server-side; client-side validation is additive.
-
-#### UC-12.2 — Include non-registered participants
-
-As a user, I want to add someone who does not have a FinAdv account as a participant so that I can track splits with friends outside the app.
-
-**Acceptance criteria:**
-- Non-user participants are identified by a name (required) and optional email.
-- Their share is tracked locally in the payer's account; they do not have app access.
-- If an optional email is provided, a notification email can be sent informing them of the split and their share (optional, controlled by a toggle at split creation time).
-
-#### UC-12.3 — View splits I created (I paid)
-
-As a user, I want to see all expenses I split with others so that I can track who has settled their share.
-
-**Acceptance criteria:**
-- Splits list shows: expense description, total amount, date, list of participants and their share/status.
-- Filter by status: all / pending / settled.
-- A split is fully settled when all participants have marked their share as paid.
-
-#### UC-12.4 — View splits I owe (others paid)
-
-As a registered user, I want to see expenses others split with me so that I know what I owe and can mark my share as paid.
-
-**Acceptance criteria:**
-- Incoming splits visible in a dedicated "Owe" section or tab.
-- Each shows: who paid, description, total amount, my share, status.
-- Can mark own share as paid from this view.
-
-#### UC-12.5 — Mark a share as paid
-
-As a participant (payer or other registered user), I want to mark a share as paid so that the split record reflects settlement.
-
-**Acceptance criteria:**
-- Each participant can only change their own share's status.
-- The payer can mark any non-user participant's share as paid (since non-users cannot log in).
-- Status change is visible to all registered participants in the split immediately.
-
-#### UC-12.6 — Edit or delete a split
-
-As the payer, I want to edit or delete a split expense so that I can correct mistakes.
-
-**Acceptance criteria:**
-- Only the payer (creator) can edit or delete the split.
-- Editing allows changing amounts and participants; sum-to-total validation re-runs.
-- Deleting a split removes it from all participants' views and from the payer's balance.
-
-### Functional Requirements
-
-- `ExpenseSplit` table: `debt_id` (FK to Debt, nullable if standalone split), `created_by_user_id`, `description`, `total_amount`, `date`.
-- `SplitParticipant` table: `split_id`, `user_id` (nullable — null for non-users), `name` (for non-users), `email` (optional, for non-users), `amount`, `paid` (bool, default false).
-- A Debt can have at most one `ExpenseSplit`.
-- Payer's own share is a `SplitParticipant` record with `user_id = payer`.
-- Registered participants notified in-app (and optionally by email) when added to a split.
-- Optional email notification to non-user participants if email is provided and toggle is on.
-- Splits section added to navigation.
-
-### Non-functional Requirements
-
-- **Privacy:** A registered participant sees only their own share and the split total; they cannot see other participants' amounts or statuses.
-- **Data integrity:** Deleting the associated Debt must also delete the split and all participant records.
-- **Simplicity:** No running balance between users in this phase; no debt netting across multiple splits. That complexity is deferred.
-- **Non-user experience:** Non-users receive at most one email per split (on creation); no further app interaction is required from them.
-
----
-
 ## Cross-phase Non-functional Requirements
 
 These apply to all phases and should be verified at every milestone.
@@ -897,4 +800,5 @@ These apply to all phases and should be verified at every milestone.
 - **Migrations:** Every DB model change includes an Alembic migration. Migrations are tested via the `migrated_db_path` fixture.
 - **No hardcoded secrets:** All credentials, URLs, and keys come from environment variables via pydantic-settings.
 - **Responsive design:** Every new screen is usable on a 375 px wide viewport (mobile minimum).
+- **Accessibility:** Every screen must meet WCAG 2.1 AA. Required patterns: skip-to-content link, `aria-current="page"` on the active nav item, `<label>` associated with every input, `aria-required` / `aria-invalid` / `aria-describedby` for form validation errors, `aria-live="polite"` region for HTMX partial updates, `aria-label` on icon-only controls, and a visible `focus-visible` ring on all interactive elements.
 - **Semantic HTML:** All new UI uses correct HTML elements; forms have associated labels; interactive elements are keyboard-reachable.
