@@ -72,6 +72,61 @@ uv run alembic upgrade head
 
 ---
 
+## Git workflow
+
+This project follows a simple trunk-based flow. `main` is always deployable; all work happens on short-lived feature branches merged via pull request.
+
+**Branch naming — match the commit prefix:**
+
+| Prefix | When to use |
+|--------|-------------|
+| `feat/` | New feature |
+| `fix/` | Bug fix |
+| `chore/` | Tooling, dependencies, config |
+| `docs/` | Documentation only |
+| `test/` | Tests only |
+| `refactor/` | Refactoring without behaviour change |
+
+**Standard flow:**
+
+```bash
+# 1. Start from an up-to-date main
+git checkout main
+git pull origin main
+
+# 2. Create a branch
+git checkout -b feat/income-crud
+
+# 3. Work, commit atomically
+git add .
+git commit -m "feat: add income creation endpoint"
+
+# 4. Push and open a PR
+git push -u origin feat/income-crud
+gh pr create --fill
+```
+
+**Pull request expectations:**
+
+- CI must pass (lint, type-check, tests) before merging.
+- One logical change per PR — keep diffs small and focused.
+- PR title follows the same semantic prefix as commits (`feat:`, `fix:`, etc.).
+- Merge strategy: **merge commit** (preserves full branch history).
+- Never force-push to `main`.
+
+**Automated checks on every PR and push to main:**
+
+| Check | What it runs |
+|-------|-------------|
+| Lint & type-check | `uv run task ruff` + `uv run task ty` |
+| Tests | `uv run pytest --tb=short -q` |
+| Migrations | `alembic upgrade head` → `downgrade base` → `upgrade head` (round-trip) |
+| AI code review | CodeRabbit — reviews diff against architecture rules, coding standards, TDD requirements, and phase alignment |
+
+CodeRabbit is configured in `.coderabbit.yaml`. To activate it, install the [CodeRabbit GitHub App](https://github.com/apps/coderabbit-ai) on the repository (free for public repos).
+
+---
+
 ## Project layout
 
 ```
