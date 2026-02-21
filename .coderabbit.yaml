@@ -1,0 +1,135 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: 'en-US'
+
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  high_level_summary: true
+  poem: false
+  review_status: true
+  collapse_walkthrough: false
+  review_details: true
+
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches:
+      - main
+
+  # Exclude generated and vendored files from review
+  path_filters:
+    - '!**/*.lock'
+    - '!**/alembic/versions/**'
+    - '!src/static/**'
+
+  # Per-path guidance — supplements the project standards in AGENT.md and .cursorrules
+  path_instructions:
+    - path: 'src/resources/*/routes.py'
+      instructions: |
+        Routes must be thin: validate input, await logic or repository, return response.
+        Flag any business logic, raw queries, or direct session usage in route handlers.
+        All route handlers must be async def. Flag any sync handler.
+        Prefer htmy.hx() fragments over full-page responses where HTMX is involved.
+
+    - path: 'src/resources/*/repository.py'
+      instructions: |
+        All DB access must be async. Flag any sync Session usage.
+        Functions must accept AsyncSession as the first argument.
+        No business logic here — only queries and persistence operations.
+        Use base repository helpers from _base/repository.py where applicable.
+
+    - path: 'src/resources/*/logic.py'
+      instructions: |
+        Business rules live here. Functions must be async when calling the repository
+        or external APIs. No direct session usage — call repository functions instead.
+
+    - path: 'src/resources/*/tests/**'
+      instructions: |
+        Tests must cover behaviour and outcomes, not framework internals.
+        All async tests must use async def with pytest-asyncio.
+        Flag tests that only verify model fields already defined in code.
+        Flag missing tests for new logic.py or repository.py functions.
+
+    - path: 'alembic/versions/**'
+      instructions: |
+        Every migration must implement a working downgrade() function.
+        Flag empty or pass-only downgrade() implementations.
+
+  # Hard pre-merge checks — these can block merging
+  pre_merge_checks:
+    title:
+      mode: warning
+      requirements: >
+        Title must start with a semantic prefix: feat, fix, chore, docs, test,
+        refactor, or style. Example: 'feat: add income creation endpoint'.
+
+    custom_checks:
+      - name: Architecture compliance
+        mode: error
+        instructions: |
+          Fail if any of these violations are found in the diff:
+          - Business logic or raw DB queries inside routes.py
+          - Direct session usage outside repository.py
+          - Sync DB calls (non-async) in any request-handling path
+          - Missing type hints on any function parameter or return type
+          - Classes used where a module of plain functions would suffice
+            (e.g. a DebtManager or IncomeService class)
+
+      - name: Migration coverage
+        mode: error
+        instructions: |
+          Fail if any SQLModel table model is added or altered (columns, constraints)
+          without a corresponding new file in alembic/versions/.
+
+      - name: TDD compliance
+        mode: warning
+        instructions: |
+          Warn if the PR adds new functions in logic.py or repository.py,
+          or new route handlers in routes.py, without corresponding tests.
+
+      - name: Phase alignment
+        mode: warning
+        instructions: |
+          Warn if the PR introduces models, routes, templates, or UI features
+          that belong to a later phase than the one stated in the PR title or
+          linked issue. Cross-reference acceptance criteria in ROADMAP.md.
+
+knowledge_base:
+  code_guidelines:
+    enabled: true
+    # AGENT.md and .cursorrules are in the default patterns; adding ROADMAP.md
+    # so CodeRabbit can cross-reference phase acceptance criteria during reviews.
+    filePatterns:
+      - AGENT.md
+      - .cursorrules
+      - ROADMAP.md
+
+chat:
+  auto_reply: true
+
+tools:
+  # Explicitly enable tools relevant to this Python project
+  ruff:
+    enabled: true
+  gitleaks:
+    enabled: true
+  actionlint:
+    enabled: true
+  yamllint:
+    enabled: true
+  # Disable tools with no relevance to this stack to reduce noise
+  biome:
+    enabled: false
+  swiftlint:
+    enabled: false
+  phpstan:
+    enabled: false
+  golangci-lint:
+    enabled: false
+  detekt:
+    enabled: false
+  rubocop:
+    enabled: false
+  clippy:
+    enabled: false
