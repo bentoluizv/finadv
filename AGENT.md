@@ -3,44 +3,72 @@
 Coding standards and structure: see **`.cursorrules`**.
 
 ## Current Project State
-Building the MVP for tracking Incomes and Debts (Sporadic/Recurrent).
+Building the MVP in three phases:
+- **Phase 1 (current):** Core CRUD for Incomes and Debts with lean data models and month-based list filtering.
+- **Phase 2:** Overview dashboard — monthly balance, combined list, recurrent debts summary, and upcoming (future due-date) debts.
+- **Phase 3:** User-managed Categories — separate category tables for incomes and debts; optional FK on each record.
+
+See the **Roadmap** section for acceptance criteria per phase.
 
 ## Product & UX: How the app works
 
-**Purpose:** FinAdv helps a single user act as their own financial adviser by tracking **incomes** and **debts** in one place, with clear categories and payment methods, so they can see where money comes from and where it goes (including recurrent obligations).
+**Purpose:** FinAdv helps a single user act as their own financial adviser by tracking **incomes** and **debts** in one place, so they can see where money comes from and where it goes — including recurrent monthly obligations and upcoming bills.
 
-**User:** One person managing their personal finances. No multi-user or roles in the MVP.
+**User:** One person managing their personal finances. No multi-user or roles in any phase of the MVP.
 
-**How the user interacts:** Web app in the browser. Server-rendered pages with HTMX for partial updates (no SPA). Actions are: navigate (links), submit forms (add/edit income or debt), filter or list, delete. Prefer small, focused screens and inline feedback (e.g. swap a row or a list fragment after create/delete) instead of full-page reloads where it makes sense.
+**How the user interacts:** Web app in the browser. Server-rendered pages with HTMX for partial updates (no SPA). Actions are: navigate (links), submit forms (add/edit/delete income or debt), filter by month, mark debts paid. Prefer small, focused screens and inline feedback (e.g. swap a row after create/delete/pay) instead of full-page reloads where it makes sense.
 
-**What the app does (MVP):**
-- **Incomes:** Register incoming money (fixed or variable); list and manage entries.
-- **Debts:** Register expenses/obligations with category (Food, Rent, etc.) and payment method (Pix, Credit, Debit, Cash); mark as one-off or recurrent; list and manage entries.
-- **Overview:** At least a clear list (or simple dashboard) of recent or all incomes and debts so the user can review the situation.
+**Data models:**
 
-**Functional requirements (MVP):**
-- CRUD for **incomes**: create, list, view, edit, delete.
-- CRUD for **debts**: create, list, view, edit, delete.
-- **Debt** has: category (e.g. Food, Rent), payment method (Pix, Credit, Debit, Cash), amount, optional description, and **is_recurrent** (boolean).
-- **Income** has: amount, optional description, and fixed vs variable (or equivalent).
-- Navigation between main areas (e.g. home, incomes, debts) from the layout.
-- Validation and clear error messages on forms (e.g. required fields, invalid amounts).
+- **Income** — `amount` (required), `source` (required, e.g. "Salary"), `type` (required: Fixed | Variable), `date` (required, defaults to today), `description` (optional). Phase 3 adds: `category_id` (FK to IncomeCategory, nullable).
+- **Debt** — `amount` (required), `date` (required, defaults to today), `payment_method` (required: Pix | Credit | Debit | Cash — hardcoded enum), `is_recurrent` (bool, default False), `due_date` (optional — if in the future and `paid=False` the debt is "upcoming"), `paid` (bool, default False), `description` (optional). Phase 3 adds: `category_id` (FK to DebtCategory, nullable).
+- **IncomeCategory** (Phase 3) — `name` (required). User-managed. Separate from DebtCategory.
+- **DebtCategory** (Phase 3) — `name` (required). User-managed. Separate from IncomeCategory.
+
+**What the app does — by phase:**
+
+- **Phase 1 — Incomes & Debts:** Full CRUD for each. Lists default to the current calendar month; user can navigate months. Can mark a debt as paid/unpaid inline.
+- **Phase 2 — Overview:** Dashboard for the selected month. Balance card (total income minus total debts = net). Combined chronological list (incomes + debts for selected month). Recurrent debts section (all `is_recurrent=True` debts, not month-filtered). Upcoming section (debts with `due_date` in the future and `paid=False`).
+- **Phase 3 — Categories:** CRUD pages for IncomeCategory and DebtCategory. Income and Debt forms gain an optional category picker from their respective list. Category shown on list rows and detail views. Deleting a category sets affected records' `category_id` to NULL (no cascade delete).
+
+**Functional requirements:**
+
+- CRUD for **incomes**: create, list (month filter, default current month), edit, delete.
+- CRUD for **debts**: create, list (month filter, default current month), edit, delete, mark paid/unpaid.
+- **Overview** (Phase 2): month selector; balance summary; combined chronological list; recurrent debts section; upcoming debts section.
+- **Categories** (Phase 3): separate CRUD for IncomeCategory and DebtCategory; optional category field on incomes and debts.
+- Navigation from the layout to: Overview (home), Incomes, Debts. Phase 3 adds: Categories.
+- Validation and clear error messages on all forms (required fields, valid amounts, valid dates).
 
 **Non-functional requirements:**
 - **Simplicity:** Few screens and concepts; no unnecessary features.
-- **Clarity:** Labels and copy should be understandable at a glance (e.g. “Recurrent” vs “One-off”).
+- **Clarity:** Labels understandable at a glance (e.g. "Recurrent", "Upcoming", "Fixed", "Variable").
 - **Responsive:** Usable on small screens (mobile-friendly layout).
 - **Accessibility:** Semantic HTML, labels, and keyboard navigation; avoid interaction that relies only on hover or tiny targets.
-- **Performance:** Fast response for list and form actions; HTMX used to update only the changed parts where appropriate.
+- **Performance:** Fast responses; HTMX updates only the changed part where appropriate.
 
-**User stories (MVP):**
-- As a user, I want to **add an income** (amount, optional note) so that I can track what I earn.
-- As a user, I want to **add a debt** (amount, category, payment method, optional note, and whether it’s recurrent) so that I can track what I owe or spend.
-- As a user, I want to **see a list of my incomes and debts** so that I can review my financial situation.
-- As a user, I want to **edit or delete** an income or a debt so that I can correct or remove entries.
-- As a user, I want to **navigate** between “Incomes”, “Debts”, and home/overview so that I can focus on one area at a time.
+**User stories:**
 
-When implementing a feature, align with these stories and requirements; do not add flows or screens that are out of scope for the MVP (see Out of Scope).
+*Phase 1:*
+- As a user, I want to **add an income** (source, type, amount, date, optional note) so I can track what I earn.
+- As a user, I want to **add a debt** (amount, payment method, date, recurrent flag, optional due date, optional note) so I can track what I owe or spend.
+- As a user, I want to **list incomes and debts by month** (current month by default, navigable) so I can review one period at a time.
+- As a user, I want to **edit or delete** any income or debt entry so I can fix mistakes.
+- As a user, I want to **mark a debt as paid or unpaid** so I can track what is settled.
+- As a user, I want to **navigate** between Overview, Incomes, and Debts from any screen.
+
+*Phase 2:*
+- As a user, I want to see a **monthly balance** (income minus debts = net) so I know if I am in the positive for that month.
+- As a user, I want to see a **combined list** of all incomes and debts for the selected month in chronological order.
+- As a user, I want to see all my **recurrent debts** in a dedicated section so I always know my fixed monthly obligations.
+- As a user, I want to see **upcoming debts** (future due dates, unpaid) so I can plan ahead and avoid surprises.
+
+*Phase 3:*
+- As a user, I want to **create and manage income categories** (e.g. Salary, Freelance) so I can label where my money comes from.
+- As a user, I want to **create and manage debt categories** (e.g. Food, Rent, Health) so I can label my expenses.
+- As a user, I want to **assign a category** when adding or editing an income or debt so I can keep things organized.
+
+When implementing a feature, align with the phase it belongs to; do not add flows or screens that are out of scope (see Out of Scope and Roadmap).
 
 ## Project Layout
 - **Entry point:** `src/main.py` (mounts routers, creates app).
@@ -49,7 +77,7 @@ When implementing a feature, align with these stories and requirements; do not a
 - **Infrastructure:** `src/ext/` — e.g. `db.py` (async engine, `get_session` yielding `AsyncSession`), future async API clients. All models used by Alembic must be imported there (or in a central metadata). Shared test fixtures (e.g. test client, async session) live in `src/ext/` or project-root `conftest.py`.
 
 ## Tools & Dependencies (pyproject.toml)
-- **Runtime:** Python ≥3.14; **uv** (package manager and runner).
+- **Runtime:** Python >=3.14; **uv** (package manager and runner).
 - **Web:** **FastAPI** (API + server; `[all]` includes Jinja2, static files, etc.); **fasthx** (HTMX integration for FastAPI); **htmy** (HTML templating).
 - **Data:** **SQLModel** (ORM + Pydantic models); **Alembic** (DB migrations); **pydantic** (validation/settings); **orjson** (fast JSON); **python-ulid** (ULID identifiers).
 - **Dev / quality:** **ruff** (lint + format); **ty** (static type checker); **pytest** + **pytest-asyncio** (tests, including async tests); **taskipy** (task runner from pyproject); **pytailwindcss** (Tailwind CSS build); **ignr** (CLI to fetch .gitignore templates from gitignore.io).
@@ -112,7 +140,7 @@ from sqlmodel.ext.asyncio.session import AsyncSession
 htmy = HTMY()  # or pass template dir / renderer config
 
 @router.get("/debts")
-@htmy.hx(DebtListComponent)   # HTMX request → render fragment
+@htmy.hx(DebtListComponent)   # HTMX request -> render fragment
 async def list_debts(session: AsyncSession = Depends(get_session)) -> list[Debt]:
     return await repository.list_all(session, Debt)
 
@@ -120,7 +148,7 @@ async def list_debts(session: AsyncSession = Depends(get_session)) -> list[Debt]
 @htmy.page(IndexPageComponent)  # full page (e.g. layout + content)
 async def index() -> None: ...
 ```
-The decorator uses the route’s return value and request context; the component (htmy or Jinja) receives that data. Same route can serve both HTMX and non-HTMX by returning data and letting the decorator choose the view. Prefer **small HTMX fragments** (for `hx-swap`) for list rows, tables, and form regions, and use full pages only for top-level shells (layout + initial content).
+The decorator uses the route's return value and request context; the component (htmy or Jinja) receives that data. Same route can serve both HTMX and non-HTMX by returning data and letting the decorator choose the view. Prefer **small HTMX fragments** (for `hx-swap`) for list rows, tables, and form regions, and use full pages only for top-level shells (layout + initial content).
 
 ### htmy — components and rendering
 ```python
@@ -141,7 +169,7 @@ def debt_table(debts: list[Debt], context: Context) -> Component:
 # In a route (e.g. with fasthx): return data; fasthx passes it to the component.
 # Standalone render: result = await Renderer().render(debt_table(debts))
 ```
-Use `html.<tag>(*children, attr=value)` for elements; `@component` (or `@component.context_only`) for **function components**; and optional class-based components with an `htmy(self, context)` method when you want to attach behavior to domain objects. Attributes use snake_case and are converted to kebab-case (e.g. `data_theme` → `data-theme`).
+Use `html.<tag>(*children, attr=value)` for elements; `@component` (or `@component.context_only`) for **function components**; and optional class-based components with an `htmy(self, context)` method when you want to attach behavior to domain objects. Attributes use snake_case and are converted to kebab-case (e.g. `data_theme` -> `data-theme`).
 
 - **Component factories vs components:** When you only need to build markup without context, use simple factories that return components (e.g. `def debt_row_factory(...) -> Component`). When you need access to request/route context or want reusable behavior, prefer **htmy components** (`@component` or classes with `htmy()`), as described in the htmy components and function components guides.
 - **Streaming (optional):** For very long lists or slow-per-item rendering, you may use `StreamingRenderer` from htmy together with FastHX (see the HTMY Streaming example). Only introduce streaming when you have a real performance need; otherwise keep rendering simple for the MVP.
@@ -177,7 +205,7 @@ async def session():
 In resource tests: use `client.get("/debts")`, `client.post("/debts", json={...})` for route tests. For repository or logic tests that need a DB, use the async `session` fixture and `await` repository calls. Use `pytest-asyncio` and mark async tests with `@pytest.mark.asyncio` (or configure asyncio mode in `pytest.ini`/`pyproject.toml`).
 
 ### orjson — optional fast JSON
-FastAPI can use orjson for response serialization (faster for large payloads). To enable: set a custom `JSONResponse` that uses `orjson.dumps`, or use FastAPI’s built-in orjson support if available for your version. Request bodies are still parsed by FastAPI; use orjson mainly for responses when needed.
+FastAPI can use orjson for response serialization (faster for large payloads). To enable: set a custom `JSONResponse` that uses `orjson.dumps`, or use FastAPI's built-in orjson support if available for your version. Request bodies are still parsed by FastAPI; use orjson mainly for responses when needed.
 
 ## Terminal & Tooling Protocol
 - **Installation:** `uv add <package>`
@@ -199,8 +227,8 @@ Development is test-driven: for each functionality, write the test first, then i
 
 - **Run:** `uv run pytest`
 - **Location:** Inside each resource: `src/resources/<name>/tests/` (e.g. `test_logic.py`, `test_repository.py`, `test_routes.py`). Tests live next to the code they cover.
-- **Focus:** Test business logic (`logic.py`) and repository behavior; avoid testing the framework or trivial glue. We do not test everything—only what defines and protects the functionality we are building.
-- **Fixtures:** Resource-specific fixtures in that resource’s `tests/conftest.py`; shared fixtures (DB session, test client) in `src/ext/conftest.py` or project-root `conftest.py`.
+- **Focus:** Test business logic (`logic.py`) and repository behavior; avoid testing the framework or trivial glue. We do not test everything — only what defines and protects the functionality we are building.
+- **Fixtures:** Resource-specific fixtures in that resource's `tests/conftest.py`; shared fixtures (DB session, test client) in `src/ext/conftest.py` or project-root `conftest.py`.
 
 ## Static Assets
 - **CSS:** Tailwind via **pytailwindcss** — run its watch/build as needed; keep built assets in a single known directory (e.g. `static/` under `src` or project root) and serve via FastAPI static mount. Use utility classes in templates/htmy components instead of custom CSS files where possible.
@@ -240,9 +268,9 @@ Configuration is in `pyproject.toml` under `[tool.ruff]`, `[tool.ruff.lint]`, an
 - **Usage:** Routes and logic `await` repository functions; they do not build raw SQL or use the session directly outside the repository.
 
 ### Factory (per resource, only when needed)
-- **Purpose:** Centralize creation of domain entities when you need overrides (e.g. explicit id/timestamps in tests) or building from a dict. If the model’s `default_factory` is enough (e.g. BaseTable already sets id, created_at, updated_at), instantiate the model directly and skip a factory.
+- **Purpose:** Centralize creation of domain entities when you need overrides (e.g. explicit id/timestamps in tests) or building from a dict. If the model's `default_factory` is enough (e.g. BaseTable already sets id, created_at, updated_at), instantiate the model directly and skip a factory.
 - **Location:** `src/resources/<name>/factory.py` or builder functions in `models.py` (e.g. `build_debt(...)`).
-- **When to add:** Add a factory when you have repeated construction logic, test fixtures that need controlled ids/timestamps, or creation from external data. Do not add a factory “for consistency” if `Model(**kwargs)` is enough.
+- **When to add:** Add a factory when you have repeated construction logic, test fixtures that need controlled ids/timestamps, or creation from external data. Do not add a factory "for consistency" if `Model(**kwargs)` is enough.
 
 ### Base resource (`src/resources/_base/`)
 Reusable logic and templates shared by all resources. Do not mount routes for `_base`; it is not a domain.
@@ -254,7 +282,7 @@ Reusable logic and templates shared by all resources. Do not mount routes for `_
 ## Avoiding redundancy and unnecessary code
 - **Single source of truth:** Do not duplicate values. E.g. get `database_url` from settings only; do not re-export it as `DATABASE_URL` elsewhere unless a tool (e.g. Alembic) strictly requires it.
 - **One entry point per concept:** Prefer one way to obtain something (e.g. `get_settings()` or `settings`, not both unless Depends needs the callable). Document the preferred one.
-- **YAGNI (You Aren’t Gonna Need It):** Do not add code “for later.” No placeholder partials, stub files, or “might be useful” helpers. Add form_errors, CSRF, or a base factory when a real feature needs them.
+- **YAGNI (You Aren't Gonna Need It):** Do not add code "for later." No placeholder partials, stub files, or "might be useful" helpers. Add form_errors, CSRF, or a base factory when a real feature needs them.
 - **Lean tests:** Test behavior, not framework. Prefer one or two focused tests per concern; merge tests that only assert the same thing in different ways. Avoid testing that a library does what it says (e.g. that a model has fields defined in code).
 - **Minimal exports:** Only export what other modules use. Drop `__all__` entries and module-level names that nothing imports.
 
@@ -264,20 +292,76 @@ Reusable logic and templates shared by all resources. Do not mount routes for `_
 - **Request/response:** Use Pydantic models (or SQLModel) for request body and `response_model=` on routes. Prefer explicit schemas in `models.py` over returning raw ORM objects when the shape differs from the DB.
 - **Status codes:** Set explicit `status_code` where it matters (e.g. `201` on create, `404` when not found, `204` on delete).
 - **Thin routes:** Route handlers should: validate input (via Pydantic), `await` logic/repository, return response. No business or DB logic in the route body.
-- **Exceptions:** Use HTTPException for API errors; optionally a single exception handler for domain errors (e.g. “not found”) that maps to 404/400.
+- **Exceptions:** Use HTTPException for API errors; optionally a single exception handler for domain errors (e.g. "not found") that maps to 404/400.
 
 ## Domain Logic Rules
-- **Income:** Fixed or variable incoming funds.
-- **Debts:** Categorized (Food, Rent, etc.) and linked to Payment Methods (Pix, Credit, Debit, Cash).
-- **Recurrence:** Debts must support a boolean `is_recurrent` flag.
+
+**Income:**
+- `type` is a fixed enum: `Fixed` (predictable, recurring salary) or `Variable` (one-off or irregular payment).
+- `date` is when the income was received; defaults to today.
+
+**Debt:**
+- `payment_method` is a fixed enum: `Pix`, `Credit`, `Debit`, `Cash`. No user management needed.
+- `is_recurrent=True` means the debt repeats monthly (e.g. rent). Shown in the recurrent section of the Overview regardless of selected month.
+- A debt is **upcoming** when `due_date` is a future date and `paid=False`. Shown in the upcoming section of the Overview.
+- `paid` can be toggled inline from the debt list or the Overview. Toggling does not affect the balance (paid debts are still counted as expenses for the month).
+- `date` is when the expense occurred (or was registered); `due_date` is the payment deadline (optional).
+
+**Balance (Phase 2):**
+- Calculated for the selected month: `sum(income.amount) - sum(debt.amount)` where both income.date and debt.date fall within the selected year-month.
+- Paid and unpaid debts are both counted in the balance (spending happened regardless of payment status).
+
+**Categories (Phase 3):**
+- `IncomeCategory` and `DebtCategory` are separate tables; a category belongs to only one domain.
+- `category_id` on Income and Debt is nullable — existing records without a category are valid.
+- Deleting a category must set `category_id = NULL` on all affected records (no cascade delete of records).
+
+## Roadmap
+
+### Phase 1 — Core CRUD (current)
+**Goal:** Register and manage incomes and debts. Lists filterable by calendar month.
+
+Resources: `incomes`, `debts`.
+
+**Acceptance criteria:**
+- Can create, edit, and delete an income (source, type, amount, date, optional description).
+- Can create, edit, and delete a debt (amount, payment method, date, is_recurrent, optional due_date, optional description).
+- Income list and debt list show current month entries by default; user can navigate to previous/next month.
+- Can mark a debt as paid or unpaid from the list (inline HTMX update).
+- Navigation in the layout links to Overview (placeholder), Incomes, and Debts.
+- Forms show validation errors inline (required fields, valid amounts and dates).
+
+### Phase 2 — Overview dashboard
+**Goal:** Give the user a financial picture of the selected month at a glance.
+
+Resources: `overview` (read-only, pulls from incomes + debts repositories).
+
+**Acceptance criteria:**
+- Month selector shown on the page; defaults to current month.
+- Balance card displays: total income for month, total debts for month, net (income minus debts). Both paid and unpaid debts count.
+- Combined list shows all incomes and debts for the selected month, sorted by date descending, with clear visual distinction (income vs debt).
+- Recurrent debts section lists all debts with `is_recurrent=True` (not filtered by month), so the user always sees their fixed obligations.
+- Upcoming section lists debts where `due_date` is in the future and `paid=False`, sorted by due_date ascending.
+
+### Phase 3 — User-managed Categories
+**Goal:** Let the user label incomes and debts with their own categories.
+
+Resources: `income_categories`, `debt_categories`. Extensions to `incomes` and `debts`.
+
+**Acceptance criteria:**
+- Can create, rename, and delete income categories. Deleting sets `category_id=NULL` on affected incomes.
+- Can create, rename, and delete debt categories. Deleting sets `category_id=NULL` on affected debts.
+- Income and debt create/edit forms show an optional category picker from the relevant list.
+- Category name shown on income and debt list rows.
+- Navigation in the layout includes a link to Categories management.
 
 ## Working with Resources
 
 Development is test-driven: for each functionality, add a test first (focused on business logic), then the minimal code to pass it. Do not create models, DB tables, or new resource pieces for behavior you are not yet testing.
 
 When asked to create a new feature:
-1. Align with **Product & UX** (AGENT.md): which user story or requirement it satisfies; keep flows and screens within the described MVP.
-2. Identify if it's a new resource or an extension of an existing one.
+1. Align with **Product & UX** and the **Roadmap** phase it belongs to; do not implement features from a later phase unless asked.
+2. Identify if it is a new resource or an extension of an existing one.
 3. For each piece of behavior: write the test, then add only the models/repository/logic/routes/templates required by that test. Import new models in `src/ext/db.py` (or metadata) when you add a migration so Alembic sees them.
 4. Check for code smells and redundancy (duplicate exports, placeholder files, unnecessary factories) before finishing.
 
@@ -289,11 +373,11 @@ When asked to create a new feature:
 4. Add a migration only when you have new or changed models: `uv run alembic revision --autogenerate -m "add <name>"` then `uv run alembic upgrade head`.
 
 ### Adding an HTMX endpoint
-1. Add an `async def` route in the resource’s `routes.py`; `await` a function from `logic.py` (no business logic in the route).
+1. Add an `async def` route in the resource's `routes.py`; `await` a function from `logic.py` (no business logic in the route).
 2. Return a small HTML fragment (e.g. from `templates/`) for `hx-swap`; prefer fragments over full-page responses.
 
 ## Out of Scope (MVP)
-Do not add unless explicitly requested: **auth / login**, **multi-tenant**, **REST API for mobile**, **Open Banking / external APIs**. Keep the MVP focused on incomes and debts.
+Do not add unless explicitly requested: **auth / login**, **multi-user / multi-tenant**, **REST API for mobile**, **Open Banking / external APIs**, **charts or graphs**, **budget goals**, **savings tracking**, **CSV export**. Keep the MVP focused on the three phases above.
 
 ## Commits
 - **Semantic prefixes:** Every commit message starts with one of: `feat`, `fix`, `test`, `refactor`, `chore`, `docs`, `style`, `ci`.
