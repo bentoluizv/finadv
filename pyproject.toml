@@ -46,6 +46,7 @@ check = "uv run task ruff && uv run task ty"
 dev = [
     "ignr>=2.2",
     "pytest-asyncio>=0.25.0",
+    "pytest-cov>=6.0.0",
     "pytailwindcss>=0.3.0",
     "pytest>=9.0.2",
     "ruff>=0.15.0",
