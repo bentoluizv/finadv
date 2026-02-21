@@ -52,7 +52,7 @@ When implementing a feature, align with these stories and requirements; do not a
 - **Runtime:** Python ≥3.14; **uv** (package manager and runner).
 - **Web:** **FastAPI** (API + server; `[all]` includes Jinja2, static files, etc.); **fasthx** (HTMX integration for FastAPI); **htmy** (HTML templating).
 - **Data:** **SQLModel** (ORM + Pydantic models); **Alembic** (DB migrations); **pydantic** (validation/settings); **orjson** (fast JSON); **python-ulid** (ULID identifiers).
-- **Dev / quality:** **ruff** (lint + format); **ty** (static type checker); **pytest** (tests); **taskipy** (task runner from pyproject); **pytailwindcss** (Tailwind CSS build); **ignr** (CLI to fetch .gitignore templates from gitignore.io).
+- **Dev / quality:** **ruff** (lint + format); **ty** (static type checker); **pytest** + **pytest-asyncio** (tests, including async tests); **taskipy** (task runner from pyproject); **pytailwindcss** (Tailwind CSS build); **ignr** (CLI to fetch .gitignore templates from gitignore.io).
 
 ## Async-first rule
 
@@ -182,7 +182,7 @@ FastAPI can use orjson for response serialization (faster for large payloads). T
 ## Terminal & Tooling Protocol
 - **Installation:** `uv add <package>`
 - **Execution:** `uv run fastapi dev src/main.py`
-- **Quality Control:** `uv run task check` (runs ruff then ty). See **Ruff (lint and format)** for rule explanations and recommendations.
+- **Quality Control:** After editing Python files, use `ReadLints` (IDE feedback) then `uv run task check` (runs ruff then ty). See **Ruff (lint and format)** for rule explanations and recommendations.
 - **Database Migrations:**
   1. Update `src/resources/<resource>/models.py` and import the new model in `alembic/env.py`.
   2. `uv run alembic revision --autogenerate -m "description"`
@@ -193,9 +193,13 @@ FastAPI can use orjson for response serialization (faster for large payloads). T
 - Prefer env vars and **pydantic-settings** (or a single settings module in `src/ext/`). Do not hardcode secrets or DB URLs.
 - Use a conventional name for the DB: e.g. `DATABASE_URL` or `SQLITE_PATH`. For async SQLModel use `create_async_engine` (e.g. `sqlite+aiosqlite:///...` for SQLite). Document in README or here if you introduce one.
 
-## Testing
+## Testing (TDD, business-logic focus)
+
+Development is test-driven: for each functionality, write the test first, then implement only the code needed to make it pass. Do not add models, DB tables, or resource code without a test that defines the behavior.
+
 - **Run:** `uv run pytest`
-- **Location:** Inside each resource: `src/resources/<name>/tests/` (e.g. `test_logic.py`, `test_repository.py`, `test_routes.py`). Tests live next to the code they cover, same as models, routes, and logic.
+- **Location:** Inside each resource: `src/resources/<name>/tests/` (e.g. `test_logic.py`, `test_repository.py`, `test_routes.py`). Tests live next to the code they cover.
+- **Focus:** Test business logic (`logic.py`) and repository behavior; avoid testing the framework or trivial glue. We do not test everything—only what defines and protects the functionality we are building.
 - **Fixtures:** Resource-specific fixtures in that resource’s `tests/conftest.py`; shared fixtures (DB session, test client) in `src/ext/conftest.py` or project-root `conftest.py`.
 
 ## Static Assets
@@ -268,17 +272,21 @@ Reusable logic and templates shared by all resources. Do not mount routes for `_
 - **Recurrence:** Debts must support a boolean `is_recurrent` flag.
 
 ## Working with Resources
+
+Development is test-driven: for each functionality, add a test first (focused on business logic), then the minimal code to pass it. Do not create models, DB tables, or new resource pieces for behavior you are not yet testing.
+
 When asked to create a new feature:
 1. Align with **Product & UX** (AGENT.md): which user story or requirement it satisfies; keep flows and screens within the described MVP.
 2. Identify if it's a new resource or an extension of an existing one.
-3. Ensure `models.py` in the resource folder is imported in the central `src/ext/db.py` or `metadata` for Alembic to see it.
-4. Check for code smells (Primitive Obsession, Long Methods) and for redundancy (duplicate exports, placeholder files, unnecessary factories) before finishing.
+3. For each piece of behavior: write the test, then add only the models/repository/logic/routes/templates required by that test. Import new models in `src/ext/db.py` (or metadata) when you add a migration so Alembic sees them.
+4. Check for code smells and redundancy (duplicate exports, placeholder files, unnecessary factories) before finishing.
 
-### Adding a new resource
-1. Create `src/resources/<name>/` with `models.py`, `logic.py`, `repository.py`, `routes.py`, `templates/`, and `tests/`.
-2. Define DB models (SQLModel, `table=True`) inheriting from the base model in `_base/models.py` where appropriate; add request/response schemas in `models.py`. Put all DB access in `repository.py` (use base repository helpers from `_base/repository.py` for generic CRUD). Put pure business functions in `logic.py`. Add a factory only if the resource needs one (overrides, fixtures, or construction from dict). Templates extend the base layout from `_base/templates/`; add partials only when needed.
-3. Register the router in `src/main.py`; import the new models in `src/ext/db.py` (or metadata) so Alembic picks them up.
-4. Add migration: `uv run alembic revision --autogenerate -m "add <name>"` then `uv run alembic upgrade head`.
+### Adding a new resource (test-first)
+
+1. Create `src/resources/<name>/` and add files only as a testable functionality needs them (typically `tests/` first, then `models.py`, `repository.py`, `logic.py`, `routes.py`, `templates/` as required).
+2. For each functionality: write the test, then implement. Define DB models and request/response schemas when a test needs them; put DB access in `repository.py` (use base helpers from `_base/repository.py`), business rules in `logic.py`. Add a factory only when tests or creation flow need it. Add templates when a route or HTMX endpoint needs them.
+3. Register the router in `src/main.py` when you add the first route; import the new models in `src/ext/db.py` (or metadata) for Alembic.
+4. Add a migration only when you have new or changed models: `uv run alembic revision --autogenerate -m "add <name>"` then `uv run alembic upgrade head`.
 
 ### Adding an HTMX endpoint
 1. Add an `async def` route in the resource’s `routes.py`; `await` a function from `logic.py` (no business logic in the route).
@@ -287,5 +295,9 @@ When asked to create a new feature:
 ## Out of Scope (MVP)
 Do not add unless explicitly requested: **auth / login**, **multi-tenant**, **REST API for mobile**, **Open Banking / external APIs**. Keep the MVP focused on incomes and debts.
 
-## Commits.
-- We will use the semantic and atomic commit rules, each commit will have a prefix such as chore, feat, test, fix, doc...
+## Commits
+- **Semantic prefixes:** Every commit message starts with one of: `feat`, `fix`, `test`, `refactor`, `chore`, `docs`, `style`, `ci`.
+- **Atomic:** One logical change per commit — do not bundle a feature with its migration and a bug fix in the same commit.
+- **Imperative mood:** Write the subject line as an instruction, e.g. `feat: add debt creation endpoint` not `added debt creation`.
+- **No `--no-verify`:** Never skip pre-commit hooks unless explicitly asked.
+- **When to commit:** Only when the user explicitly asks. Do not auto-commit after every change.
