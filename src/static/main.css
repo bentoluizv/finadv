@@ -1,20 +1,21 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme {
-  /* Brand — Emerald */
+  /* Brand accent — Emerald */
   --color-brand-50:  #ecfdf5;
   --color-brand-100: #d1fae5;
   --color-brand-600: #059669;
   --color-brand-700: #047857;
-  --color-brand-800: #065f46;
 
-  /* Neutral — Slate */
-  --color-neutral-50:  #f8fafc;
-  --color-neutral-100: #f1f5f9;
-  --color-neutral-200: #e2e8f0;
-  --color-neutral-500: #64748b;
-  --color-neutral-700: #334155;
-  --color-neutral-900: #0f172a;
+  /* Surface neutrals (renamed from neutral-* to avoid shadowing built-in) */
+  --color-surface-50:  #f8fafc;
+  --color-surface-100: #f1f5f9;
+  --color-surface-200: #e2e8f0;
+  --color-surface-500: #64748b;
+  --color-surface-700: #334155;
+  --color-surface-900: #0f172a;
 
   /* Status */
   --color-success: #16a34a;

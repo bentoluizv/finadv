@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="{{ 'dark' if request.cookies.get('theme') == 'dark' else '' }}">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -12,53 +12,68 @@
     <script src="https://unpkg.com/htmx.org@2.0.2" defer></script>
   </head>
   <body
-    class="min-h-screen bg-slate-950 text-slate-100 flex flex-col"
+    class="min-h-screen bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 flex flex-col"
     hx-boost="true"
     hx-target="#content"
     hx-select="#content"
-    hx-swap="innerHTML"
+    hx-swap="outerHTML"
   >
     <!-- Skip to main content — visually hidden until focused -->
     <a
       href="#content"
-      class="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-emerald-600 focus:px-4 focus:py-2 focus:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-950"
+      class="sr-only focus:not-sr-only focus:fixed focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-emerald-600 focus:px-4 focus:py-2 focus:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-slate-50 dark:focus:ring-offset-slate-950"
     >
       Skip to main content
     </a>
 
-    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur">
+    <header class="border-b border-slate-200 bg-white/80 dark:border-slate-800 dark:bg-slate-900/80 backdrop-blur">
       <nav
         class="mx-auto flex max-w-5xl items-center justify-between px-4 py-3"
         aria-label="Main navigation"
       >
         <a href="/" class="flex items-center gap-2 text-sm font-semibold tracking-tight">
           <span
-            class="inline-flex h-7 w-7 items-center justify-center rounded bg-emerald-500/10 text-emerald-400 text-xs font-bold"
+            class="inline-flex h-7 w-7 items-center justify-center rounded bg-emerald-600/10 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 text-xs font-bold"
             aria-hidden="true"
           >
             FA
           </span>
-          <span class="text-slate-50">FinAdv</span>
+          <span class="text-slate-900 dark:text-slate-50">FinAdv</span>
         </a>
-        <div class="flex items-center gap-4 text-xs font-medium text-slate-300" role="list">
+
+        <div class="flex items-center gap-4 text-xs font-medium text-slate-600 dark:text-slate-300">
           <a
             href="/"
-            role="listitem"
-            class="hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 rounded-sm {% if active_page == 'overview' %}text-emerald-400 font-semibold{% endif %}"
+            class="hover:text-emerald-600 dark:hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900 rounded-sm {% if active_page == 'overview' %}text-emerald-600 dark:text-emerald-400 font-semibold{% endif %}"
             {% if active_page == 'overview' %}aria-current="page"{% endif %}
           >Overview</a>
           <a
             href="/incomes/"
-            role="listitem"
-            class="hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 rounded-sm {% if active_page == 'incomes' %}text-emerald-400 font-semibold{% endif %}"
+            class="hover:text-emerald-600 dark:hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900 rounded-sm {% if active_page == 'incomes' %}text-emerald-600 dark:text-emerald-400 font-semibold{% endif %}"
             {% if active_page == 'incomes' %}aria-current="page"{% endif %}
           >Incomes</a>
           <a
             href="/debts/"
-            role="listitem"
-            class="hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-900 rounded-sm {% if active_page == 'debts' %}text-emerald-400 font-semibold{% endif %}"
+            class="hover:text-emerald-600 dark:hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-emerald-400 focus-visible:ring-offset-2 focus-visible:ring-offset-white dark:focus-visible:ring-offset-slate-900 rounded-sm {% if active_page == 'debts' %}text-emerald-600 dark:text-emerald-400 font-semibold{% endif %}"
             {% if active_page == 'debts' %}aria-current="page"{% endif %}
           >Debts</a>
+
+          <!-- Theme toggle — POSTs to server, sets cookie, triggers full reload -->
+          <button
+            hx-post="/theme/toggle"
+            hx-swap="none"
+            aria-label="Toggle dark mode"
+            class="rounded cursor-pointer p-1.5 text-slate-500 hover:text-emerald-600 dark:text-slate-400 dark:hover:text-emerald-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 dark:focus-visible:ring-emerald-400"
+          >
+            <!-- Moon — shown in light mode -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="block dark:hidden h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z" />
+            </svg>
+            <!-- Sun — shown in dark mode -->
+            <svg xmlns="http://www.w3.org/2000/svg" class="hidden dark:block h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m8.66-9H21M3 12H2m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 5a7 7 0 100 14A7 7 0 0012 5z" />
+            </svg>
+          </button>
         </div>
       </nav>
     </header>
@@ -78,12 +93,12 @@
 
     <main
       id="content"
-      class="mx-auto flex w-full max-w-5xl flex-1 flex-col gap-4 px-4 py-6"
+      class="mx-auto flex w-full max-w-5xl flex-1 flex-col px-4 py-6"
     >
       {% block content %}{% endblock %}
     </main>
 
-    <footer class="border-t border-slate-800 py-4 text-center text-[11px] text-slate-500">
+    <footer class="border-t border-slate-200 dark:border-slate-800 py-4 text-center text-[11px] text-slate-400 dark:text-slate-500">
       <p>FinAdv — Income &amp; Debt tracking</p>
     </footer>
   </body>
