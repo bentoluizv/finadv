@@ -2,11 +2,11 @@
 FinAdv FastAPI app: routers, static files, and template config.
 """
 
+import http
 import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 
-import http
 from fastapi import FastAPI, Request, Response
 from fastapi.exception_handlers import http_exception_handler
 from fastapi.responses import HTMLResponse

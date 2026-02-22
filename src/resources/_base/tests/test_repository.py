@@ -1,4 +1,4 @@
-"""Tests for base repository helpers (get_by_id, list_all, add, update, delete_by_id)."""
+"""Tests for base repository helpers (get_by_id, list_all, add, update, delete)."""
 
 import pytest
 from sqlmodel import Field, SQLModel
