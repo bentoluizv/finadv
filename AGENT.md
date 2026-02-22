@@ -377,17 +377,13 @@ Reusable logic and templates shared by all resources. Do not mount routes for `_
 ## Roadmap
 
 ### Phase 1 — Core CRUD (current)
+
 **Goal:** Register and manage incomes and debts. Lists filterable by calendar month.
 
-Resources: `incomes`, `debts`.
+**Atomic steps (TDD, in order):** P1.1 → … → P1.13. For each step, write the test first, then implement. See [ROADMAP.md](ROADMAP.md) Phase 1 for the table and use cases (UC-1.1–UC-1.9).
 
-**Acceptance criteria:**
-- Can create, edit, and delete an income (source, type, amount, date, optional description).
-- Can create, edit, and delete a debt (amount, payment method, date, is_recurrent, optional due_date, optional description).
-- Income list and debt list show current month entries by default; user can navigate to previous/next month.
-- Can mark a debt as paid or unpaid from the list (inline HTMX update).
-- Navigation in the layout links to Overview (placeholder), Incomes, and Debts.
-- Forms show validation errors inline (required fields, valid amounts and dates).
+**Acceptance criteria (summary):**
+- CRUD for Income and Debt; month-filtered lists; month navigation; paid toggle for debts; inline validation; HTMX partial updates.
 
 ### Phase 2 — Overview dashboard
 **Goal:** Give the user a financial picture of the selected month at a glance.
