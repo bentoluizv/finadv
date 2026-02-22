@@ -269,10 +269,7 @@ FastAPI can use orjson for response serialization (faster for large payloads). T
 - **Installation:** `uv add <package>`
 - **Execution:** `uv run fastapi dev src/main.py`
 - **Quality Control:** After editing Python files, use `ReadLints` (IDE feedback) then `uv run task check` (runs ruff then ty). See **Ruff (lint and format)** for rule explanations and recommendations.
-- **Database Migrations:**
-  1. Update `src/resources/<resource>/models.py` and import the new model in `alembic/env.py`.
-  2. `uv run alembic revision --autogenerate -m "description"`
-  3. `uv run alembic upgrade head`
+- **Database Migrations:** Do not write migrations by hand; they are **auto-generated**. Workflow: (1) Update models and import them in `migrations/env.py`; (2) run `uv run task new-migration "description"` (or `uv run alembic revision --autogenerate -m "description"`); (3) **review** the generated migration and adjust only if needed; (4) `uv run task migrate` (or `uv run alembic upgrade head`).
 - **Testing Alembic:** Use the `migrated_db_path` fixture (in `tests/conftest.py`): it runs `alembic upgrade head` against a temporary DB and yields the path. Tests in `tests/test_alembic.py` are atomic (no user action): they use this fixture or a fresh `tmp_path` and run upgrade/downgrade in-process. Run: `uv run pytest tests/test_alembic.py -v`.
 
 ## Environment & Config
@@ -287,6 +284,18 @@ Development is test-driven: for each functionality, write the test first, then i
 - **Location:** Inside each resource: `src/resources/<name>/tests/` (e.g. `test_logic.py`, `test_repository.py`, `test_routes.py`). Tests live next to the code they cover.
 - **Focus:** Test business logic (`logic.py`) and repository behavior; avoid testing the framework or trivial glue. We do not test everything — only what defines and protects the functionality we are building.
 - **Fixtures:** Resource-specific fixtures in that resource's `tests/conftest.py`; shared fixtures (DB session, test client) in `src/ext/conftest.py` or project-root `conftest.py`.
+
+### Phase execution protocol (all phases)
+
+For **every phase**, work in **minor TDD steps**. Use the phase's step table in [ROADMAP.md](ROADMAP.md) when one exists (e.g. P1.1–P1.13 for Phase 1).
+
+**Per step:**
+
+1. **Test first:** Write the test(s) that define the behaviour; run tests and confirm they fail (red).
+2. **Implement:** Add only the code needed to make those tests pass (models → repository/factory if needed → logic → routes → templates, as required by the test).
+3. **Verify:** Run `uv run task check` and `uv run pytest`; fix until green.
+
+**After each step:** Ask the user whether to proceed to the next step (do not advance without confirmation).
 
 ## Static Assets
 - **CSS:** Tailwind via **pytailwindcss** — run its watch/build as needed; keep built assets in a single known directory (e.g. `static/` under `src` or project root) and serve via FastAPI static mount. Use utility classes in templates/htmy components instead of custom CSS files where possible.
@@ -377,20 +386,16 @@ Reusable logic and templates shared by all resources. Do not mount routes for `_
 ## Roadmap
 
 ### Phase 1 — Core CRUD (current)
+
 **Goal:** Register and manage incomes and debts. Lists filterable by calendar month.
 
-Resources: `incomes`, `debts`.
+**Atomic steps (TDD, in order):** P1.1 → … → P1.13. For each step, write the test first, then implement. See [ROADMAP.md](ROADMAP.md) Phase 1 for the table and use cases (UC-1.1–UC-1.9). Phase 1 follows the phase execution protocol above; the agent asks before moving to the next step.
 
-**Acceptance criteria:**
-- Can create, edit, and delete an income (source, type, amount, date, optional description).
-- Can create, edit, and delete a debt (amount, payment method, date, is_recurrent, optional due_date, optional description).
-- Income list and debt list show current month entries by default; user can navigate to previous/next month.
-- Can mark a debt as paid or unpaid from the list (inline HTMX update).
-- Navigation in the layout links to Overview (placeholder), Incomes, and Debts.
-- Forms show validation errors inline (required fields, valid amounts and dates).
+**Acceptance criteria (summary):**
+- CRUD for Income and Debt; month-filtered lists; month navigation; paid toggle for debts; inline validation; HTMX partial updates.
 
 ### Phase 2 — Overview dashboard
-**Goal:** Give the user a financial picture of the selected month at a glance.
+**Goal:** Give the user a financial picture of the selected month at a glance. Work in minor TDD steps (from ROADMAP when defined); test first, then implement; ask before next step.
 
 Resources: `overview` (read-only, pulls from incomes + debts repositories).
 
@@ -402,7 +407,7 @@ Resources: `overview` (read-only, pulls from incomes + debts repositories).
 - Upcoming section lists debts where `due_date` is in the future and `paid=False`, sorted by due_date ascending.
 
 ### Phase 3 — User-managed Categories
-**Goal:** Let the user label incomes and debts with their own categories.
+**Goal:** Let the user label incomes and debts with their own categories. Work in minor TDD steps (from ROADMAP when defined); test first, then implement; ask before next step.
 
 Resources: `income_categories`, `debt_categories`. Extensions to `incomes` and `debts`.
 
@@ -414,7 +419,7 @@ Resources: `income_categories`, `debt_categories`. Extensions to `incomes` and `
 - Navigation in the layout includes a link to Categories management.
 
 ### Phase 4 — Bank CSV Import
-**Goal:** Let the user import a monthly CSV exported from their bank app so they do not have to enter transactions manually. The app diffs the parsed data against existing records and asks for approval before writing anything.
+**Goal:** Let the user import a monthly CSV exported from their bank app so they do not have to enter transactions manually. The app diffs the parsed data against existing records and asks for approval before writing anything. Work in minor TDD steps (from ROADMAP when defined); test first, then implement; ask before next step.
 
 Resources: `imports` (new — upload, parse, diff, approve). Reads from and writes to `incomes` and `debts` repositories.
 
@@ -484,7 +489,7 @@ When asked to create a new feature:
 1. Create `src/resources/<name>/` and add files only as a testable functionality needs them (typically `tests/` first, then `models.py`, `repository.py`, `logic.py`, `routes.py`, `templates/` as required).
 2. For each functionality: write the test, then implement. Define DB models and request/response schemas when a test needs them; put DB access in `repository.py` (use base helpers from `_base/repository.py`), business rules in `logic.py`. Add a factory only when tests or creation flow need it. Add templates when a route or HTMX endpoint needs them.
 3. Register the router in `src/main.py` when you add the first route; import the new models in `src/ext/db.py` (or metadata) for Alembic.
-4. Add a migration only when you have new or changed models: `uv run alembic revision --autogenerate -m "add <name>"` then `uv run alembic upgrade head`.
+4. When you have new or changed models: generate a migration (`uv run task new-migration "add <name>"`), **review** the generated file (do not write migrations by hand), then `uv run task migrate`.
 
 ### Adding an HTMX endpoint
 1. Add an `async def` route in the resource's `routes.py`; `await` a function from `logic.py` (no business logic in the route).
@@ -492,7 +497,7 @@ When asked to create a new feature:
 3. For dual HTML/JSON endpoints, check `request.headers.get('HX-Request')` and return HTML for HTMX requests, JSON otherwise.
 
 ### Phase 5 — Charts & Trends
-**Goal:** Turn the accumulated Income and Debt data into visual summaries so the user can spot patterns and problem months at a glance.
+**Goal:** Turn the accumulated Income and Debt data into visual summaries so the user can spot patterns and problem months at a glance. Work in minor TDD steps (from ROADMAP when defined); test first, then implement; ask before next step.
 
 Resources: `overview` extended (read-only; pulls from incomes + debts repositories). No new DB tables needed.
 
@@ -503,7 +508,7 @@ Resources: `overview` extended (read-only; pulls from incomes + debts repositori
 - Charts are rendered server-side (SVG or a lightweight JS chart lib via CDN); no SPA framework introduced.
 
 ### Phase 6 — Budget Goals & Savings
-**Goal:** Let the user set monthly spending targets per category and savings goals, and track progress against them.
+**Goal:** Let the user set monthly spending targets per category and savings goals, and track progress against them. Work in minor TDD steps (from ROADMAP when defined); test first, then implement; ask before next step.
 
 Resources: `budget_goals`, `savings_goals` (new). Extensions to `overview`.
 
@@ -515,7 +520,7 @@ Resources: `budget_goals`, `savings_goals` (new). Extensions to `overview`.
 - Deleting a category does not delete its budget goal; goal becomes unlinked.
 
 ### Phase 7 — Auth / Login
-**Goal:** Protect the app with single-user email+password authentication and enable multi-device access.
+**Goal:** Protect the app with single-user email+password authentication and enable multi-device access. Work in minor TDD steps (from ROADMAP when defined); test first, then implement; ask before next step.
 
 Resources: `auth` (new — login, logout, session). All existing resources become session-gated.
 
@@ -527,7 +532,7 @@ Resources: `auth` (new — login, logout, session). All existing resources becom
 - No registration flow — single user, credentials configured via environment variables or a one-time setup command.
 
 ### Phase 8 — Notifications & Alerts
-**Goal:** Proactively inform the user about upcoming debts and budget limits so they can act before it is too late.
+**Goal:** Proactively inform the user about upcoming debts and budget limits so they can act before it is too late. Work in minor TDD steps (from ROADMAP when defined); test first, then implement; ask before next step.
 
 Resources: `alerts` (new — rules, delivery log). Requires Phase 7 auth.
 
@@ -539,7 +544,7 @@ Resources: `alerts` (new — rules, delivery log). Requires Phase 7 auth.
 - Delivery log shows sent alerts (date, type, message) for reference.
 
 ### Phase 9 — Multi-user
-**Goal:** Open the installation to multiple independent users, each with their own private data. Prerequisite for Phase 10.
+**Goal:** Open the installation to multiple independent users, each with their own private data. Prerequisite for Phase 10. Work in minor TDD steps (from ROADMAP when defined); test first, then implement; ask before next step.
 
 Resources: `users` (new — registration, account). `user_id` FK added to all existing resources via migration. Requires Phase 7 auth.
 
@@ -551,7 +556,7 @@ Resources: `users` (new — registration, account). `user_id` FK added to all ex
 - No user can access or modify another user's records.
 
 ### Phase 10 — Households & Shared Expenses
-**Goal:** Let users form households, record shared expenses with custom per-member splits, and have each member's share reflected in their personal balance automatically.
+**Goal:** Let users form households, record shared expenses with custom per-member splits, and have each member's share reflected in their personal balance automatically. Work in minor TDD steps (from ROADMAP when defined); test first, then implement; ask before next step.
 
 Resources: `households`, `household_members`, `household_expenses`, `expense_shares` (all new). Requires Phase 9 multi-user.
 
@@ -574,7 +579,7 @@ Resources: `households`, `household_members`, `household_expenses`, `expense_sha
 - Navigation includes a Households link for users who belong to at least one household.
 
 ### Phase 11 — Open Banking
-**Goal:** Auto-sync transactions from the user's bank via Brazil's Open Finance APIs, replacing manual CSV uploads.
+**Goal:** Auto-sync transactions from the user's bank via Brazil's Open Finance APIs, replacing manual CSV uploads. Work in minor TDD steps (from ROADMAP when defined); test first, then implement; ask before next step.
 
 Resources: `bank_connections` (new — OAuth tokens, sync state). Reuses `imports` diff-and-approval logic from Phase 4. Requires Phase 7 auth.
 

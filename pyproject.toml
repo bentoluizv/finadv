@@ -46,6 +46,8 @@ dev = "docker compose up --build"
 dev-down = "docker compose down"
 dev-logs = "docker compose logs -f app"
 test = "uv run pytest --cov=src --cov-report=term-missing"
+new-migration = "uv run alembic revision --autogenerate -m"
+migrate = "uv run alembic upgrade head"
 
 [dependency-groups]
 dev = [

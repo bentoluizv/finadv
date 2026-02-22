@@ -11,6 +11,7 @@ from collections.abc import Generator
 from pathlib import Path
 
 import pytest
+from sqlmodel import SQLModel
 
 # Use in-memory DB for tests; must be set before any import of src.ext.db
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
@@ -40,8 +41,28 @@ def migrated_db_path(tmp_path: Path) -> Generator[str, None, None]:
     No reliance on user action or existing DB state.
     """
     db_file = tmp_path / "test.db"
-    url = f"sqlite:///{db_file}"
+    url = f"sqlite+aiosqlite:///{db_file}"
     env = {"DATABASE_URL": url}
     result = _run_alembic("upgrade", "head", env=env)
     assert result.returncode == 0, (result.stdout or "") + (result.stderr or "")
     yield str(db_file)
+
+
+@pytest.fixture
+async def migrated_session(migrated_db_path: str):
+    """AsyncSession bound to the migrated temp DB. For use in async tests."""
+    from sqlmodel.ext.asyncio.session import AsyncSession
+    from src.ext.db import build_engine
+    url = f"sqlite+aiosqlite:///{migrated_db_path}"
+    engine = build_engine(database_url=url)
+    async with AsyncSession(engine, expire_on_commit=False) as session:
+        yield session
+    await engine.dispose()
+
+
+@pytest.fixture
+def client():
+    """TestClient with app. Tables created on first use via create_all."""
+    from fastapi.testclient import TestClient
+    from src.main import app
+    return TestClient(app)

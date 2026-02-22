@@ -20,7 +20,7 @@ reviews:
   # Exclude generated and vendored files from review
   path_filters:
     - '!**/*.lock'
-    - '!**/alembic/versions/**'
+    - '!**/migrations/versions/**'
     - '!src/static/**'
 
   # Per-path guidance — supplements the project standards in AGENT.md and .cursorrules
@@ -51,7 +51,7 @@ reviews:
         Flag tests that only verify model fields already defined in code.
         Flag missing tests for new logic.py or repository.py functions.
 
-    - path: 'alembic/versions/**'
+    - path: 'migrations/versions/**'
       instructions: |
         Every migration must implement a working downgrade() function.
         Flag empty or pass-only downgrade() implementations.
@@ -80,7 +80,7 @@ reviews:
         mode: error
         instructions: |
           Fail if any SQLModel table model is added or altered (columns, constraints)
-          without a corresponding new file in alembic/versions/.
+          without a corresponding new file in migrations/versions/.
 
       - name: TDD compliance
         mode: warning

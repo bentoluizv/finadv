@@ -100,7 +100,7 @@ add_issue \
 - \`src/resources/_base/models.py\`: \`BaseTable\` with \`id\` (ULID str), \`created_at\`, \`updated_at\`
 - \`src/resources/_base/repository.py\`: generic async helpers — \`get_by_id\`, \`list_all\`, \`add\`, \`delete_by_id\`
 - \`src/resources/_base/templates/layout.html\`: shared layout with navigation (Overview, Incomes, Debts)
-- Alembic: \`alembic/env.py\` configured for async SQLite; run \`alembic upgrade head\`
+- Alembic: \`migrations/env.py\` configured for async SQLite; run \`alembic upgrade head\`
 - \`pyproject.toml\`: taskipy tasks \`check\` (ruff + ty), \`ruff\`, \`ty\`; Tailwind build task
 - \`tests/conftest.py\`: shared \`client\` (TestClient) and async \`session\` fixtures
 

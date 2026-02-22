@@ -35,6 +35,26 @@ Dates are targets, not commitments. Sprint boundaries may shift; re-estimate at 
 **Milestone:** Sprint 1 · **Target:** Mar 6, 2026 · **Effort:** 8 dev days
 **Dependencies:** None — this is the foundation.
 
+### Atomic Steps (TDD: test first, then implement)
+
+| Step | Test first | Then implement |
+|------|------------|----------------|
+| P1.1 | Test: migration runs; can create and get Income and Debt (e.g. in repository or model test). | Income and Debt models + migration. |
+| P1.2 | Test: `list_by_month(session, y, m)` returns incomes in range, empty outside. | Incomes repository (`list_by_month`, base CRUD). |
+| P1.3 | Test: `list_by_month`, `list_recurrent`, `list_upcoming` for debts. | Debts repository. |
+| P1.4 | Test: `create_income`, `get_income`, `update_income`, `delete_income`. | Incomes logic. |
+| P1.5 | Test: debt CRUD + `toggle_paid`. | Debts logic. |
+| P1.6 | Test: GET `/incomes/` returns 200, expected context (e.g. items, year, month). | Incomes list route + list template + month nav. |
+| P1.7 | Test: POST `/incomes/` with valid form creates income, redirects. | Incomes create (form route, template, validation). |
+| P1.8 | Test: GET edit, POST update, delete flow for income. | Incomes edit + delete (routes, templates, HTMX). |
+| P1.9 | Test: GET `/debts/` returns 200, expected context. | Debts list route + template + month nav. |
+| P1.10 | Test: POST `/debts/` creates debt, redirects. | Debts create. |
+| P1.11 | Test: edit and delete debt. | Debts edit + delete. |
+| P1.12 | Test: POST toggle-paid updates `paid`, returns row fragment. | Debt paid toggle (route + row partial). |
+| P1.13 | Test: `/incomes/` and `/debts/` are reachable (or rely on P1.6/P1.9). | Mount routers in `main.py`. |
+
+For each step: write the test(s) first, then implement. Run `uv run task check` and `uv run pytest` after each step. The agent must ask before proceeding to the next step.
+
 ### Goal
 
 Give the user a fast, reliable way to manually record every income and every debt. Lists are filtered by calendar month so the user always starts in the current period without extra navigation.
