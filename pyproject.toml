@@ -8,8 +8,7 @@ dependencies = [
     "aiosqlite>=0.22.1",
     "alembic>=1.18.4",
     "fastapi[all]>=0.128.7",
-    "fasthx>=3.1.0",
-    "htmy>=0.10.2",
+    "fasthx[jinja]>=3.1.0",
     "orjson>=3.11.7",
     "pydantic>=2.12.5",
     "pydantic-settings>=2.12.0",
@@ -33,6 +32,9 @@ select = ["E", "F", "I", "UP", "B", "C4", "SIM"]
 [tool.ruff.format]
 quote-style = "single"
 indent-style = "space"
+
+[tool.taskipy]
+runner = "env -u VIRTUAL_ENV"
 
 [tool.taskipy.tasks]
 serve = "uv run fastapi dev src/main.py"
