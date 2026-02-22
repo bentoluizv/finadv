@@ -269,10 +269,7 @@ FastAPI can use orjson for response serialization (faster for large payloads). T
 - **Installation:** `uv add <package>`
 - **Execution:** `uv run fastapi dev src/main.py`
 - **Quality Control:** After editing Python files, use `ReadLints` (IDE feedback) then `uv run task check` (runs ruff then ty). See **Ruff (lint and format)** for rule explanations and recommendations.
-- **Database Migrations:**
-  1. Update `src/resources/<resource>/models.py` and import the new model in `migrations/env.py`.
-  2. `uv run alembic revision --autogenerate -m "description"`
-  3. `uv run alembic upgrade head`
+- **Database Migrations:** Do not write migrations by hand; they are **auto-generated**. Workflow: (1) Update models and import them in `migrations/env.py`; (2) run `uv run task new-migration "description"` (or `uv run alembic revision --autogenerate -m "description"`); (3) **review** the generated migration and adjust only if needed; (4) `uv run task migrate` (or `uv run alembic upgrade head`).
 - **Testing Alembic:** Use the `migrated_db_path` fixture (in `tests/conftest.py`): it runs `alembic upgrade head` against a temporary DB and yields the path. Tests in `tests/test_alembic.py` are atomic (no user action): they use this fixture or a fresh `tmp_path` and run upgrade/downgrade in-process. Run: `uv run pytest tests/test_alembic.py -v`.
 
 ## Environment & Config
@@ -492,7 +489,7 @@ When asked to create a new feature:
 1. Create `src/resources/<name>/` and add files only as a testable functionality needs them (typically `tests/` first, then `models.py`, `repository.py`, `logic.py`, `routes.py`, `templates/` as required).
 2. For each functionality: write the test, then implement. Define DB models and request/response schemas when a test needs them; put DB access in `repository.py` (use base helpers from `_base/repository.py`), business rules in `logic.py`. Add a factory only when tests or creation flow need it. Add templates when a route or HTMX endpoint needs them.
 3. Register the router in `src/main.py` when you add the first route; import the new models in `src/ext/db.py` (or metadata) for Alembic.
-4. Add a migration only when you have new or changed models: `uv run alembic revision --autogenerate -m "add <name>"` then `uv run alembic upgrade head`.
+4. When you have new or changed models: generate a migration (`uv run task new-migration "add <name>"`), **review** the generated file (do not write migrations by hand), then `uv run task migrate`.
 
 ### Adding an HTMX endpoint
 1. Add an `async def` route in the resource's `routes.py`; `await` a function from `logic.py` (no business logic in the route).

@@ -18,6 +18,7 @@ Act as a Lead Python Developer. Prioritize simplicity, type safety, and function
 - **Base Resource:** `src/resources/_base/` holds reusable pieces: base models (id, created_at, updated_at), base repository helpers (generic CRUD), and one layout template. Add partials only when a feature needs them. Do not mount routes for `_base`.
 - **Resource Pattern:** Group by domain. A resource (e.g. `debts`) has `models.py`, `logic.py`, `repository.py`, `routes.py`, `templates/`, and `tests/`—add or extend each when a testable functionality requires it; do not create models or DB tables for behavior you are not yet testing. Use base model and base repository; add a resource factory only when overrides or construction-from-dict are needed.
 - **External Pattern:** Infrastructure (DB, API clients) must live in `/src/ext`.
+- **Migrations:** Do not write migration scripts by hand. Use Alembic autogenerate (`uv run task new-migration "description"`); only review and optionally adjust the generated file, then run `uv run task migrate`.
 
 ## Technical Requirements (Python 3.14)
 - **Async-first:** All I/O must be async: use `async def` for routes, repository functions, logic that calls the repository or external APIs, and any other I/O. Use `AsyncSession` (SQLModel) for DB; use async HTTP clients for API calls. Do not use sync `Session` or blocking calls in request-handling paths.
