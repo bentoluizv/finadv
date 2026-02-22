@@ -256,23 +256,6 @@ wheels = [
 ]
 
 [[package]]
-name = "fasthx"
-version = "3.1.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "fastapi" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/d7/c3/d9e248cc90e2be18e6dab0274bfc3cfdab0dd6fe63ff9f5f41b8550500d7/fasthx-3.1.0.tar.gz", hash = "sha256:8826004329d2b3a557963e39ea73baf0a311c63628c411723b76d4f0dfef53ae", size = 20160, upload-time = "2025-12-31T15:48:56.319Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/6f/1f/44b757b771770a2fee7592dcd23d3317776df77a3c8d666c0e1b32247702/fasthx-3.1.0-py3-none-any.whl", hash = "sha256:21f25d1352eb45db4d26049230c399ef4f3ddfebc21b73be7716b7df31488bb3", size = 19840, upload-time = "2025-12-31T15:48:54.917Z" },
-]
-
-[package.optional-dependencies]
-jinja = [
-    { name = "jinja2" },
-]
-
-[[package]]
 name = "finadv"
 version = "0.1.0"
 source = { virtual = "." }
@@ -280,7 +263,6 @@ dependencies = [
     { name = "aiosqlite" },
     { name = "alembic" },
     { name = "fastapi", extra = ["all"] },
-    { name = "fasthx", extra = ["jinja"] },
     { name = "orjson" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
@@ -305,7 +287,6 @@ requires-dist = [
     { name = "aiosqlite", specifier = ">=0.22.1" },
     { name = "alembic", specifier = ">=1.18.4" },
     { name = "fastapi", extras = ["all"], specifier = ">=0.128.7" },
-    { name = "fasthx", extras = ["jinja"], specifier = ">=3.1.0" },
     { name = "orjson", specifier = ">=3.11.7" },
     { name = "pydantic", specifier = ">=2.12.5" },
     { name = "pydantic-settings", specifier = ">=2.12.0" },
