@@ -12,7 +12,8 @@ services:
       - db_data:/app/data
     command: >
       sh -c "uv run alembic upgrade head &&
-             uv run fastapi dev src/main.py --host 0.0.0.0"
+             exec uv run fastapi dev src/main.py --host 0.0.0.0"
+    stop_grace_period: 30s
     restart: unless-stopped
 
   caddy:
