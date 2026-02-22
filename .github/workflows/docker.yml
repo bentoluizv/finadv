@@ -1,6 +1,6 @@
 name: Docker
 
-run-name: ${{ github.workflow }} ${{ github.run_number }}
+run-name: ${{ github.workflow }} ${{ github.run_number }} · ${{ github.ref_name }}
 
 on:
   push:
