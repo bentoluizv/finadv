@@ -11,6 +11,7 @@ from collections.abc import Generator
 from pathlib import Path
 
 import pytest
+from sqlmodel import SQLModel
 
 # Use in-memory DB for tests; must be set before any import of src.ext.db
 os.environ.setdefault("DATABASE_URL", "sqlite+aiosqlite:///:memory:")
@@ -45,3 +46,11 @@ def migrated_db_path(tmp_path: Path) -> Generator[str, None, None]:
     result = _run_alembic("upgrade", "head", env=env)
     assert result.returncode == 0, (result.stdout or "") + (result.stderr or "")
     yield str(db_file)
+
+
+@pytest.fixture
+def client():
+    """TestClient with app. Tables created on first use via create_all."""
+    from fastapi.testclient import TestClient
+    from src.main import app
+    return TestClient(app)
