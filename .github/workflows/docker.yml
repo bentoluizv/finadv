@@ -1,5 +1,7 @@
 name: Docker
 
+run-name: ${{ github.workflow }} #${{ github.run_number }}
+
 on:
   push:
     branches: [main]
