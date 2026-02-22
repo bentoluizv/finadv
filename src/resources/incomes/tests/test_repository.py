@@ -15,7 +15,11 @@ from src.resources.incomes.repository import list_by_month
 async def test_list_by_month_returns_incomes_in_range(
     migrated_session: AsyncSession,
 ) -> None:
-    """list_by_month returns incomes whose entry_date is in the given month."""
+    """
+    Verifies that querying incomes by year and month returns incomes whose entry_date falls within that month.
+    
+    Creates an Income with entry_date 2025-02-15, persists it, queries list_by_month for February 2025, and asserts the result contains that income with the expected source and entry_date.
+    """
     income_feb = Income(
         source='Salary',
         income_type=IncomeType.FIXED,

@@ -19,7 +19,17 @@ ROOT = Path(__file__).resolve().parent.parent
 
 
 def _get_head_revision() -> str:
-    """Return the current Alembic head revision id (single head only)."""
+    """
+    Get the current Alembic head revision identifier.
+    
+    This function expects exactly one head in the migrations script directory and will raise an AssertionError if multiple or no heads are found.
+    
+    Returns:
+        head_revision (str): The Alembic head revision id.
+    
+    Raises:
+        AssertionError: If the repository does not have exactly one head revision.
+    """
     config = Config(ROOT / "alembic.ini")
     config.set_main_option("script_location", str(ROOT / "migrations"))
     script = ScriptDirectory.from_config(config)
@@ -29,7 +39,16 @@ def _get_head_revision() -> str:
 
 
 def _alembic(*args: str, url: str) -> subprocess.CompletedProcess[str]:
-    """Run alembic with DATABASE_URL set. Returns completed process."""
+    """
+    Invoke the Alembic CLI with the environment variable DATABASE_URL set to the provided URL.
+    
+    Parameters:
+        *args (str): Arguments to pass to the alembic command (e.g., "upgrade", "head").
+        url (str): Database URL to assign to the DATABASE_URL environment variable.
+    
+    Returns:
+        subprocess.CompletedProcess[str]: Completed process containing the exit code and captured stdout/stderr.
+    """
     env = {**os.environ, "DATABASE_URL": url}
     return subprocess.run(
         [sys.executable, "-m", "alembic", *args],
