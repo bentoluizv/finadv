@@ -149,7 +149,7 @@ When implementing a feature, align with the phase it belongs to; do not add flow
 
 ## Tools & Dependencies (pyproject.toml)
 - **Runtime:** Python >=3.14; **uv** (package manager and runner).
-- **Web:** **FastAPI** (API + server; `[all]` includes Jinja2, static files, etc.); **fasthx[jinja]** (HTMX integration for FastAPI with Jinja2 rendering).
+- **Web:** **FastAPI** (API + server; `[all]` includes Jinja2, static files, etc.); **HTMX** via CDN for partial updates.
 - **Data:** **SQLModel** (ORM + Pydantic models); **Alembic** (DB migrations); **pydantic** (validation/settings); **orjson** (fast JSON); **python-ulid** (ULID identifiers).
 - **Dev / quality:** **ruff** (lint + format); **ty** (static type checker); **pytest** + **pytest-asyncio** (tests, including async tests); **taskipy** (task runner from pyproject); **pytailwindcss** (Tailwind CSS build); **ignr** (CLI to fetch .gitignore templates from gitignore.io).
 
@@ -203,35 +203,34 @@ async def add(session: AsyncSession, entity: Debt) -> Debt:
 ```
 Use `await session.exec(select(Model).where(...))` for filtered queries; keep all such code inside `repository.py`. Engine must be created with `create_async_engine` for async.
 
-### fasthx + Jinja2 — HTMX vs full page (async routes)
+### Jinja2 + HTMX — full page and fragments (async routes)
 ```python
-# src/main.py — one shared Jinja instance used project-wide
-from fasthx.jinja import Jinja
+# src/main.py — one shared templates instance used project-wide
+from fastapi import Request
+from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-jinja = Jinja(Jinja2Templates(directory=str(TEMPLATES_DIR)))
+templates = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
-# Full page (non-HTMX and HTMX both render the template unconditionally)
-@app.get('/')
-@jinja.page('index.html')
-async def home() -> None: ...
+# Full page
+@app.get('/', response_class=HTMLResponse)
+async def home(request: Request) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request=request, name='index.html', context={'active_page': 'overview'}
+    )
 
-# HTMX fragment (renders template only for HTMX requests; returns data for non-HTMX)
-@router.get('/debts')
-@jinja.hx('debts/list.html')
-async def list_debts(session: AsyncSession = Depends(get_session)) -> list[Debt]:
-    return await repository.list_all(session, Debt)
+# HTMX fragment (for list rows, tables, form regions)
+@router.get('/debts', response_class=HTMLResponse)
+async def list_debts(request: Request, session: AsyncSession = Depends(get_session)) -> HTMLResponse:
+    debts = await repository.list_all(session, Debt)
+    return templates.TemplateResponse(
+        request=request, name='debts/list.html', context={'items': debts, 'active_page': 'debts'}
+    )
 ```
 
-**Template context rules** (how the route's return value becomes template variables):
+**Template context:** Pass a `dict` to `context={...}`. Always include `active_page` so the layout can highlight the active nav link.
 
-- `None` → empty context `{}`.
-- `dict` → passed as-is; use this to combine multiple values and layout hints.
-- Pydantic model or dataclass → each public field becomes a template variable.
-- `list` → available as `items` in the template.
-- Always pass `active_page` via a dict so the layout can highlight the active nav link, e.g. `return {"active_page": "debts", "debts": debts}`.
-
-Prefer **small HTMX fragments** (`@jinja.hx`) for list rows, tables, and form regions, and use `@jinja.page` only for top-level shells (layout + initial content).
+Prefer **small HTML fragments** for list rows, tables, and form regions; use full-page templates only for top-level shells (layout + initial content). For dual HTML/JSON endpoints, check `request.headers.get('HX-Request')` and branch accordingly.
 
 ### python-ulid — IDs for new entities
 ```python
@@ -291,7 +290,7 @@ Development is test-driven: for each functionality, write the test first, then i
 
 ## Static Assets
 - **CSS:** Tailwind via **pytailwindcss** — run its watch/build as needed; keep built assets in a single known directory (e.g. `static/` under `src` or project root) and serve via FastAPI static mount. Use utility classes in templates/htmy components instead of custom CSS files where possible.
-- **JS:** Rely on **HTMX** attributes and FastHX/htmy components for interactivity. Do not introduce a SPA framework or custom front-end build unless explicitly requested.
+- **JS:** Rely on **HTMX** attributes (`hx-get`, `hx-post`, `hx-swap`, etc.) for interactivity. Do not introduce a SPA framework or custom front-end build unless explicitly requested.
 
 ## Ruff (lint and format)
 
@@ -489,7 +488,8 @@ When asked to create a new feature:
 
 ### Adding an HTMX endpoint
 1. Add an `async def` route in the resource's `routes.py`; `await` a function from `logic.py` (no business logic in the route).
-2. Return a small HTML fragment (e.g. from `templates/`) for `hx-swap`; prefer fragments over full-page responses.
+2. Return `templates.TemplateResponse(request=request, name='...', context={...})` with a small HTML fragment for `hx-swap`; prefer fragments over full-page responses.
+3. For dual HTML/JSON endpoints, check `request.headers.get('HX-Request')` and return HTML for HTMX requests, JSON otherwise.
 
 ### Phase 5 — Charts & Trends
 **Goal:** Turn the accumulated Income and Debt data into visual summaries so the user can spot patterns and problem months at a glance.
