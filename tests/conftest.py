@@ -41,7 +41,7 @@ def migrated_db_path(tmp_path: Path) -> Generator[str, None, None]:
     No reliance on user action or existing DB state.
     """
     db_file = tmp_path / "test.db"
-    url = f"sqlite:///{db_file}"
+    url = f"sqlite+aiosqlite:///{db_file}"
     env = {"DATABASE_URL": url}
     result = _run_alembic("upgrade", "head", env=env)
     assert result.returncode == 0, (result.stdout or "") + (result.stderr or "")

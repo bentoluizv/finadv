@@ -12,8 +12,20 @@ import sys
 from pathlib import Path
 
 import pytest
+from alembic.config import Config
+from alembic.script import ScriptDirectory
 
 ROOT = Path(__file__).resolve().parent.parent
+
+
+def _get_head_revision() -> str:
+    """Return the current Alembic head revision id (single head only)."""
+    config = Config(ROOT / "alembic.ini")
+    config.set_main_option("script_location", str(ROOT / "migrations"))
+    script = ScriptDirectory.from_config(config)
+    heads = script.get_heads()
+    assert len(heads) == 1, f"Expected single head, got {heads}"
+    return heads[0]
 
 
 def _alembic(*args: str, url: str) -> subprocess.CompletedProcess[str]:
@@ -30,7 +42,7 @@ def _alembic(*args: str, url: str) -> subprocess.CompletedProcess[str]:
 
 
 def test_upgrade_head_creates_alembic_version(migrated_db_path: str) -> None:
-    """After upgrade head, alembic_version table exists and has one row."""
+    """After upgrade head, alembic_version table exists and has one row at current head."""
     conn = sqlite3.connect(migrated_db_path)
     cur = conn.execute(
         "SELECT version_num FROM alembic_version"
@@ -38,12 +50,12 @@ def test_upgrade_head_creates_alembic_version(migrated_db_path: str) -> None:
     rows = cur.fetchall()
     conn.close()
     assert len(rows) == 1
-    assert rows[0][0] == "001"
+    assert rows[0][0] == _get_head_revision()
 
 
 def test_upgrade_head_idempotent(migrated_db_path: str) -> None:
     """Running upgrade head again on an already-migrated DB does not fail."""
-    url = f"sqlite:///{migrated_db_path}"
+    url = f"sqlite+aiosqlite:///{migrated_db_path}"
     result = _alembic("upgrade", "head", url=url)
     assert result.returncode == 0, (result.stdout or "") + (result.stderr or "")
 
@@ -51,7 +63,7 @@ def test_upgrade_head_idempotent(migrated_db_path: str) -> None:
 def test_downgrade_base_then_upgrade_head(tmp_path: Path) -> None:
     """downgrade base then upgrade head leaves DB at head (atomic, no user action)."""
     db_file = tmp_path / "test.db"
-    url = f"sqlite:///{db_file}"
+    url = f"sqlite+aiosqlite:///{db_file}"
 
     r1 = _alembic("upgrade", "head", url=url)
     assert r1.returncode == 0, (r1.stdout or "") + (r1.stderr or "")
@@ -74,4 +86,4 @@ def test_downgrade_base_then_upgrade_head(tmp_path: Path) -> None:
     cur = conn.execute("SELECT version_num FROM alembic_version")
     rows = cur.fetchall()
     conn.close()
-    assert len(rows) == 1 and rows[0][0] == "001"
+    assert len(rows) == 1 and rows[0][0] == _get_head_revision()

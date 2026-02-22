@@ -10,6 +10,8 @@ from alembic import context
 from sqlmodel import SQLModel
 
 from src.ext.settings import get_settings
+from src.resources.debts.models import Debt  # noqa: F401
+from src.resources.incomes.models import Income  # noqa: F401
 
 # this is the Alembic Config object
 config = context.config
