@@ -149,13 +149,13 @@ When implementing a feature, align with the phase it belongs to; do not add flow
 
 ## Tools & Dependencies (pyproject.toml)
 - **Runtime:** Python >=3.14; **uv** (package manager and runner).
-- **Web:** **FastAPI** (API + server; `[all]` includes Jinja2, static files, etc.); **fasthx** (HTMX integration for FastAPI); **htmy** (HTML templating).
+- **Web:** **FastAPI** (API + server; `[all]` includes Jinja2, static files, etc.); **fasthx[jinja]** (HTMX integration for FastAPI with Jinja2 rendering).
 - **Data:** **SQLModel** (ORM + Pydantic models); **Alembic** (DB migrations); **pydantic** (validation/settings); **orjson** (fast JSON); **python-ulid** (ULID identifiers).
 - **Dev / quality:** **ruff** (lint + format); **ty** (static type checker); **pytest** + **pytest-asyncio** (tests, including async tests); **taskipy** (task runner from pyproject); **pytailwindcss** (Tailwind CSS build); **ignr** (CLI to fetch .gitignore templates from gitignore.io).
 
 ## Async-first rule
 
-All request-handling and I/O must be **async**: use `async def` for routes, repository functions, and logic that performs DB or external API calls. Use **AsyncSession** (SQLModel) and async HTTP clients; do not use sync `Session` or blocking I/O in the request path. This keeps the event loop non-blocking and matches FastAPI/htmy async usage.
+All request-handling and I/O must be **async**: use `async def` for routes, repository functions, and logic that performs DB or external API calls. Use **AsyncSession** (SQLModel) and async HTTP clients; do not use sync `Session` or blocking I/O in the request path. This keeps the event loop non-blocking and matches FastAPI async usage.
 
 ## Dependency usage examples
 
@@ -203,47 +203,35 @@ async def add(session: AsyncSession, entity: Debt) -> Debt:
 ```
 Use `await session.exec(select(Model).where(...))` for filtered queries; keep all such code inside `repository.py`. Engine must be created with `create_async_engine` for async.
 
-### fasthx — HTMX vs full page (async routes)
+### fasthx + Jinja2 — HTMX vs full page (async routes)
 ```python
-from fasthx.htmy import HTMY
-from sqlmodel.ext.asyncio.session import AsyncSession
+# src/main.py — one shared Jinja instance used project-wide
+from fasthx.jinja import Jinja
+from fastapi.templating import Jinja2Templates
 
-htmy = HTMY()  # or pass template dir / renderer config
+jinja = Jinja(Jinja2Templates(directory=str(TEMPLATES_DIR)))
 
-@router.get("/debts")
-@htmy.hx(DebtListComponent)   # HTMX request -> render fragment
+# Full page (non-HTMX and HTMX both render the template unconditionally)
+@app.get('/')
+@jinja.page('index.html')
+async def home() -> None: ...
+
+# HTMX fragment (renders template only for HTMX requests; returns data for non-HTMX)
+@router.get('/debts')
+@jinja.hx('debts/list.html')
 async def list_debts(session: AsyncSession = Depends(get_session)) -> list[Debt]:
     return await repository.list_all(session, Debt)
-
-@router.get("/")
-@htmy.page(IndexPageComponent)  # full page (e.g. layout + content)
-async def index() -> None: ...
 ```
-The decorator uses the route's return value and request context; the component (htmy or Jinja) receives that data. Same route can serve both HTMX and non-HTMX by returning data and letting the decorator choose the view. Prefer **small HTMX fragments** (for `hx-swap`) for list rows, tables, and form regions, and use full pages only for top-level shells (layout + initial content).
 
-### htmy — components and rendering
-```python
-from htmy import Renderer, component, html, Context, Component
+**Template context rules** (how the route's return value becomes template variables):
 
-@component
-def debt_row(debt: Debt, context: Context) -> Component:
-    return html.tr(
-        html.td(debt.id),
-        html.td(debt.category),
-        html.td(str(debt.amount)),
-    )
+- `None` → empty context `{}`.
+- `dict` → passed as-is; use this to combine multiple values and layout hints.
+- Pydantic model or dataclass → each public field becomes a template variable.
+- `list` → available as `items` in the template.
+- Always pass `active_page` via a dict so the layout can highlight the active nav link, e.g. `return {"active_page": "debts", "debts": debts}`.
 
-@component
-def debt_table(debts: list[Debt], context: Context) -> Component:
-    return html.table([debt_row(d) for d in debts])
-
-# In a route (e.g. with fasthx): return data; fasthx passes it to the component.
-# Standalone render: result = await Renderer().render(debt_table(debts))
-```
-Use `html.<tag>(*children, attr=value)` for elements; `@component` (or `@component.context_only`) for **function components**; and optional class-based components with an `htmy(self, context)` method when you want to attach behavior to domain objects. Attributes use snake_case and are converted to kebab-case (e.g. `data_theme` -> `data-theme`).
-
-- **Component factories vs components:** When you only need to build markup without context, use simple factories that return components (e.g. `def debt_row_factory(...) -> Component`). When you need access to request/route context or want reusable behavior, prefer **htmy components** (`@component` or classes with `htmy()`), as described in the htmy components and function components guides.
-- **Streaming (optional):** For very long lists or slow-per-item rendering, you may use `StreamingRenderer` from htmy together with FastHX (see the HTMY Streaming example). Only introduce streaming when you have a real performance need; otherwise keep rendering simple for the MVP.
+Prefer **small HTMX fragments** (`@jinja.hx`) for list rows, tables, and form regions, and use `@jinja.page` only for top-level shells (layout + initial content).
 
 ### python-ulid — IDs for new entities
 ```python
