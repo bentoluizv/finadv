@@ -270,7 +270,7 @@ FastAPI can use orjson for response serialization (faster for large payloads). T
 - **Execution:** `uv run fastapi dev src/main.py`
 - **Quality Control:** After editing Python files, use `ReadLints` (IDE feedback) then `uv run task check` (runs ruff then ty). See **Ruff (lint and format)** for rule explanations and recommendations.
 - **Database Migrations:**
-  1. Update `src/resources/<resource>/models.py` and import the new model in `alembic/env.py`.
+  1. Update `src/resources/<resource>/models.py` and import the new model in `migrations/env.py`.
   2. `uv run alembic revision --autogenerate -m "description"`
   3. `uv run alembic upgrade head`
 - **Testing Alembic:** Use the `migrated_db_path` fixture (in `tests/conftest.py`): it runs `alembic upgrade head` against a temporary DB and yields the path. Tests in `tests/test_alembic.py` are atomic (no user action): they use this fixture or a fresh `tmp_path` and run upgrade/downgrade in-process. Run: `uv run pytest tests/test_alembic.py -v`.
