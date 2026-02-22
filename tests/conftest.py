@@ -35,10 +35,16 @@ def _run_alembic(*args: str, env: dict[str, str] | None = None) -> subprocess.Co
 @pytest.fixture
 def migrated_db_path(tmp_path: Path) -> Generator[str, None, None]:
     """
-    Run Alembic migrations against a temporary SQLite file and yield its path.
-
-    Atomic: uses a fresh temp dir per test, runs upgrade head, yields path.
-    No reliance on user action or existing DB state.
+    Run Alembic migrations against a temporary SQLite file and yield the file path.
+    
+    Parameters:
+        tmp_path (Path): Temporary directory provided by pytest; a file named "test.db" will be created there.
+    
+    Returns:
+        db_path (str): Filesystem path to the migrated SQLite database file.
+    
+    Raises:
+        AssertionError: If the Alembic migration command exits with a non-zero status; the assertion message includes the command's stdout and stderr.
     """
     db_file = tmp_path / "test.db"
     url = f"sqlite+aiosqlite:///{db_file}"
@@ -50,7 +56,15 @@ def migrated_db_path(tmp_path: Path) -> Generator[str, None, None]:
 
 @pytest.fixture
 async def migrated_session(migrated_db_path: str):
-    """AsyncSession bound to the migrated temp DB. For use in async tests."""
+    """
+    Provide an AsyncSession connected to a migrated temporary SQLite database for use in async tests.
+    
+    Parameters:
+        migrated_db_path (str): Filesystem path to the migrated SQLite database file.
+    
+    Returns:
+        AsyncSession: The asynchronous SQLModel session bound to the temporary database file. The session is yielded for use in the test and the engine is disposed after use.
+    """
     from sqlmodel.ext.asyncio.session import AsyncSession
     from src.ext.db import build_engine
     url = f"sqlite+aiosqlite:///{migrated_db_path}"
@@ -62,7 +76,14 @@ async def migrated_session(migrated_db_path: str):
 
 @pytest.fixture
 def client():
-    """TestClient with app. Tables created on first use via create_all."""
+    """
+    Provide a TestClient instance for the FastAPI application.
+    
+    Creating the client may trigger application startup actions (for example, creating database tables on first use).
+    
+    Returns:
+        TestClient: A TestClient bound to the application's ASGI app.
+    """
     from fastapi.testclient import TestClient
     from src.main import app
     return TestClient(app)

@@ -24,11 +24,21 @@ target_metadata = SQLModel.metadata
 
 
 def _get_url() -> str:
-    """Database URL from settings (DATABASE_URL env or .env)."""
+    """
+    Retrieve the database connection URL from application settings.
+    
+    Returns:
+        str: The database URL (for example `postgresql://...` or `sqlite:///...`) obtained from configured settings.
+    """
     return get_settings().database_url
 
 
 def run_migrations_offline() -> None:
+    """
+    Configure the Alembic context for offline (file-based) migrations and execute them.
+    
+    This resolves the database URL from the Alembic configuration or application settings, sets the migration context (including target metadata, literal binding of parameters, named paramstyle, and batch rendering for SQLite), begins a migration transaction, and runs the migrations.
+    """
     url = config.get_main_option("sqlalchemy.url") or _get_url()
     context.configure(
         url=url,
@@ -43,6 +53,14 @@ def run_migrations_offline() -> None:
 
 def do_run_migrations(connection: Connection) -> None:
     # 3. ADD BATCH MODE HERE TOO
+    """
+    Configure the Alembic migration context with the provided database connection and execute migrations using batch rendering.
+    
+    This starts a migration transaction on the given SQLAlchemy Connection and runs pending migrations with render_as_batch=True (useful for databases like SQLite that require batch mode for certain schema changes).
+    
+    Parameters:
+        connection (Connection): Active SQLAlchemy Connection to use for running the migrations.
+    """
     context.configure(
         connection=connection,
         target_metadata=target_metadata,
@@ -53,6 +71,13 @@ def do_run_migrations(connection: Connection) -> None:
         context.run_migrations()
 
 async def run_async_migrations() -> None:
+    """
+    Run database migrations using an asynchronous SQLAlchemy engine.
+    
+    Builds an async engine from the Alembic configuration (using the runtime database URL),
+    opens an async connection to execute migrations via `do_run_migrations`, and disposes
+    the engine when finished.
+    """
     configuration = config.get_section(config.config_ini_section, {})
     configuration["sqlalchemy.url"] = _get_url()
     connectable = async_engine_from_config(
@@ -67,6 +92,11 @@ async def run_async_migrations() -> None:
     await connectable.dispose()
 
 def run_migrations_online() -> None:
+    """
+    Run the application's online database migrations to apply schema changes.
+    
+    Blocks until the configured asynchronous migration routine completes.
+    """
     asyncio.run(run_async_migrations())
 
 if context.is_offline_mode():
