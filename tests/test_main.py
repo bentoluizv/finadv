@@ -6,6 +6,11 @@ from fastapi.testclient import TestClient
 from src.main import app
 
 
+@app.get('/_test_raise_500')
+async def _trigger_500() -> None:
+    raise RuntimeError('secret internal error')
+
+
 @pytest.fixture
 def client() -> TestClient:
     return TestClient(app)
@@ -32,3 +37,20 @@ def test_toggle_theme_dark_to_light(client: TestClient) -> None:
     response = client.post("/theme/toggle")  # dark -> light
     assert response.status_code == 204
     assert "theme=light" in response.headers.get("set-cookie", "")
+
+
+def test_404_returns_custom_html(client: TestClient) -> None:
+    """GET non-existent path returns 404 with custom HTML page."""
+    response = client.get('/nonexistent')
+    assert response.status_code == 404
+    assert 'Page not found' in response.text
+    assert 'looking for' in response.text and 'exist' in response.text
+
+
+def test_500_returns_custom_html(client: TestClient) -> None:
+    """Unhandled exception returns 500 with custom HTML, no internal details."""
+    no_raise_client = TestClient(app, raise_server_exceptions=False)
+    response = no_raise_client.get('/_test_raise_500')
+    assert response.status_code == 500
+    assert 'Something went wrong' in response.text
+    assert 'secret internal error' not in response.text

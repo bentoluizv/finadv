@@ -1,0 +1,15 @@
+{% extends "layout.html" %}
+{% block title %}{{ title }} — FinAdv{% endblock %}
+{% block content %}
+  <div class="flex flex-1 flex-col items-center justify-center">
+    <p class="text-6xl font-bold text-slate-300 dark:text-slate-600" aria-hidden="true">{{ status_code }}</p>
+    <h1 class="mt-2 text-xl font-semibold">{{ title }}</h1>
+    <p class="mt-1 text-slate-600 dark:text-slate-400">{{ message }}</p>
+    <a
+      href="/"
+      class="mt-6 inline-flex items-center rounded-md bg-emerald-600 px-4 py-2 text-sm font-medium text-white hover:bg-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600 focus-visible:ring-offset-2 dark:focus-visible:ring-emerald-400 dark:focus-visible:ring-offset-slate-950"
+    >
+      Back to Overview
+    </a>
+  </div>
+{% endblock %}
