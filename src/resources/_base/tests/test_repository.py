@@ -1,4 +1,4 @@
-"""Tests for base repository helpers (get_by_id, list_all, add, delete_by_id)."""
+"""Tests for base repository helpers (get_by_id, list_all, add, update, delete_by_id)."""
 
 import pytest
 from sqlmodel import Field, SQLModel
@@ -78,3 +78,16 @@ async def test_delete_by_id_returns_none_when_missing(session: AsyncSession) -> 
         session, _TestRow, "01ARZ3NDEKTSV4RRFFQ69G5FAV"
     )
     assert deleted is None
+
+
+async def test_update_modifies_entity(session: AsyncSession) -> None:
+    """update() persists changes and returns the refreshed entity."""
+    added = await base_repo.add(session, _TestRow(name="original"))
+    added.name = "updated"
+
+    updated = await base_repo.update(session, added)
+    assert updated.name == "updated"
+
+    found = await base_repo.get_by_id(session, _TestRow, added.id)
+    assert found is not None
+    assert found.name == "updated"
