@@ -53,7 +53,7 @@ Dates are targets, not commitments. Sprint boundaries may shift; re-estimate at 
 | P1.12 | Test: POST toggle-paid updates `paid`, returns row fragment. | Debt paid toggle (route + row partial). |
 | P1.13 | Test: `/incomes/` and `/debts/` are reachable (or rely on P1.6/P1.9). | Mount routers in `main.py`. |
 
-For each step: write the test(s) first, then implement. Run `uv run task check` and `uv run pytest` after each step. The agent must ask before proceed.
+For each step: write the test(s) first, then implement. Run `uv run task check` and `uv run pytest` after each step. The agent must ask before proceeding to the next step.
 
 ### Goal
 
